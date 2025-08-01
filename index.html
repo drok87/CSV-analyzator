@@ -641,27 +641,19 @@
             });
         }
 
-        // --- ZMĚNA ZDE ---
-        // Tato funkce byla upravena, aby umožnila výběr jakéhokoli sloupce pro osu Y.
         function initializeChartSelects() {
             const xAxisSelect = document.getElementById('chartXAxis');
             const yAxisSelects = document.querySelectorAll('#chartYAxis1, #chartYAxis2, #chartYAxis3');
             
-            // Pro osu X stále vybíráme sloupce, které jsou vhodné pro kategorie nebo časovou osu.
             const categoryAndDateCols = columns.filter(c => ['category', 'date'].includes(dataTypes[c]));
-            
-            // PŮVODNÍ KÓD: const numericCols = columns.filter(c => dataTypes[c] === 'number');
-            // NOVÝ KÓD: Pro osu Y nyní povolíme všechny sloupce, aby měl uživatel plnou flexibilitu.
             const allColumnsForY = columns; 
 
             xAxisSelect.innerHTML = '<option value="">Vyberte...</option>' + categoryAndDateCols.map(c => `<option value="${c}">${c}</option>`).join('');
             
             yAxisSelects.forEach(sel => {
-                // Původní kód nabízel jen `numericCols`. Nový kód nabízí všechny sloupce (`allColumnsForY`).
                 sel.innerHTML = '<option value="">Vyberte...</option>' + allColumnsForY.map(c => `<option value="${c}">${c}</option>`).join('');
             });
 
-            // Tento kód zůstává, aby se správně skryly/zobrazily osy Y podle typu grafu.
             handleChartTypeChange();
         }
         
@@ -935,6 +927,65 @@
             if (insights.length === 0) insights.push('✅ Vypadá to, že data jsou v dobré kondici. Nebyly nalezeny žádné zjevné problémy.');
 
             container.innerHTML = insights.map(insight => `<div class="insight-item"><span>${insight}</span></div>`).join('');
+        }
+
+        // --- PŘIDANÉ FUNKCE PRO NÁSTROJE ---
+
+        function removeDuplicates() {
+            const originalCount = allData.length;
+            const uniqueData = Array.from(new Set(allData.map(row => JSON.stringify(row)))).map(str => JSON.parse(str));
+            const removedCount = originalCount - uniqueData.length;
+            
+            allData = uniqueData;
+            filteredData = [...allData];
+            
+            document.getElementById('toolsContent').innerHTML = `✅ Odstraněno ${removedCount} duplicitních záznamů.`;
+            showMessage(`✅ Odstraněno ${removedCount} duplicitních záznamů.`);
+            
+            // Aktualizace celé aplikace
+            currentPage = 1;
+            renderTable();
+            updateStats();
+            updateChart();
+        }
+
+        function removeEmptyRows() {
+            const originalCount = allData.length;
+            const nonEmptyData = allData.filter(row => Object.values(row).some(val => val != null && val !== ''));
+            const removedCount = originalCount - nonEmptyData.length;
+
+            allData = nonEmptyData;
+            filteredData = [...allData];
+
+            document.getElementById('toolsContent').innerHTML = `✅ Odstraněno ${removedCount} prázdných řádků.`;
+            showMessage(`✅ Odstraněno ${removedCount} prázdných řádků.`);
+            
+            currentPage = 1;
+            renderTable();
+            updateStats();
+            updateChart();
+        }
+
+        function validateData() {
+            const errors = [];
+            columns.forEach(col => {
+                if (dataTypes[col] === 'number') {
+                    allData.forEach((row, index) => {
+                        const value = row[col];
+                        if (value != null && value !== '' && isNaN(parseFloat(String(value).replace(',','.')))) {
+                            errors.push(`<li>Chyba na řádku ${index + 1}, sloupec "<strong>${col}</strong>": Hodnota "<em>${value}</em>" není platné číslo.</li>`);
+                        }
+                    });
+                }
+            });
+
+            const toolsContent = document.getElementById('toolsContent');
+            if (errors.length > 0) {
+                toolsContent.innerHTML = `<h4>⚠️ Nalezeny chyby ve validaci:</h4><ul>${errors.join('')}</ul>`;
+            } else {
+                toolsContent.innerHTML = '<h4>✅ Validace dat proběhla úspěšně.</h4>Nebyly nalezeny žádné zjevné chyby v číselných sloupcích.';
+            }
+            showMessage(`Validace dokončena. Nalezeno ${errors.length} chyb.`);
         }
 
         document.getElementById('quickSearch').addEventListener('input', function() {
