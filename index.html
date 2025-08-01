@@ -641,18 +641,27 @@
             });
         }
 
+        // --- ZMĚNA ZDE ---
+        // Tato funkce byla upravena, aby umožnila výběr jakéhokoli sloupce pro osu Y.
         function initializeChartSelects() {
             const xAxisSelect = document.getElementById('chartXAxis');
             const yAxisSelects = document.querySelectorAll('#chartYAxis1, #chartYAxis2, #chartYAxis3');
             
+            // Pro osu X stále vybíráme sloupce, které jsou vhodné pro kategorie nebo časovou osu.
             const categoryAndDateCols = columns.filter(c => ['category', 'date'].includes(dataTypes[c]));
-            const numericCols = columns.filter(c => dataTypes[c] === 'number');
+            
+            // PŮVODNÍ KÓD: const numericCols = columns.filter(c => dataTypes[c] === 'number');
+            // NOVÝ KÓD: Pro osu Y nyní povolíme všechny sloupce, aby měl uživatel plnou flexibilitu.
+            const allColumnsForY = columns; 
 
             xAxisSelect.innerHTML = '<option value="">Vyberte...</option>' + categoryAndDateCols.map(c => `<option value="${c}">${c}</option>`).join('');
+            
             yAxisSelects.forEach(sel => {
-                sel.innerHTML = '<option value="">Vyberte...</option>' + numericCols.map(c => `<option value="${c}">${c}</option>`).join('');
+                // Původní kód nabízel jen `numericCols`. Nový kód nabízí všechny sloupce (`allColumnsForY`).
+                sel.innerHTML = '<option value="">Vyberte...</option>' + allColumnsForY.map(c => `<option value="${c}">${c}</option>`).join('');
             });
 
+            // Tento kód zůstává, aby se správně skryly/zobrazily osy Y podle typu grafu.
             handleChartTypeChange();
         }
         
