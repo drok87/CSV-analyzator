@@ -8,13 +8,29 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --apple-blue: #007aff;
+            --apple-light-gray: #f5f5f7;
+            --apple-medium-gray: #e5e5ea;
+            --apple-border-color: #d1d1d6;
+            --apple-text-color: #1d1d1f;
+            --apple-secondary-text-color: #6e6e73;
+            --apple-red: #ff3b30;
+            --apple-green: #34c759;
+        }
+
+        * { 
+            box-sizing: border-box; 
+            margin: 0; 
+            padding: 0; 
+        }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+            background-color: var(--apple-light-gray);
+            color: var(--apple-text-color);
             min-height: 100vh;
-            padding: 20px;
+            padding: 24px;
         }
         
         .container {
@@ -22,26 +38,28 @@
             margin: 0 auto;
             background: white;
             border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--apple-border-color);
             overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
         }
         
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
+            background: white;
+            color: var(--apple-text-color);
+            padding: 40px 30px 20px 30px;
             text-align: center;
+            border-bottom: 1px solid var(--apple-medium-gray);
         }
         
         h1 {
-            font-size: 2.8em;
-            margin-bottom: 10px;
+            font-size: 2.5em;
+            margin-bottom: 8px;
             font-weight: 700;
         }
         
         .subtitle {
             font-size: 1.2em;
-            opacity: 0.9;
+            color: var(--apple-secondary-text-color);
         }
         
         .main-content {
@@ -49,56 +67,46 @@
         }
         
         .upload-zone {
-            border: 3px dashed #667eea;
-            border-radius: 15px;
+            border: 2px dashed var(--apple-medium-gray);
+            border-radius: 16px;
             padding: 60px 20px;
             text-align: center;
-            background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%);
+            background-color: var(--apple-light-gray);
             margin-bottom: 30px;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
         }
         
         .upload-zone:hover {
-            border-color: #764ba2;
-            transform: translateY(-5px);
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+            background-color: #e9e9ed;
+            border-color: var(--apple-blue);
         }
         
         .upload-icon {
             font-size: 4em;
             margin-bottom: 20px;
-            animation: float 3s ease-in-out infinite;
-        }
-        
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
+            animation: none;
+            color: var(--apple-blue);
         }
         
         .upload-text {
             font-size: 1.4em;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
             font-weight: 600;
-            color: #2c3e50;
+            color: var(--apple-text-color);
         }
         
-        .upload-subtext {
-            color: #666;
-            margin-bottom: 15px;
-        }
-        
-        .upload-hint {
-            font-size: 0.9em;
-            color: #999;
+        .upload-subtext, .upload-hint {
+            color: var(--apple-secondary-text-color);
+            margin-bottom: 8px;
         }
         
         .tabs {
             display: none;
             margin-bottom: 30px;
-            background: #f8f9fa;
-            border-radius: 12px;
-            padding: 5px;
+            background: var(--apple-medium-gray);
+            border-radius: 10px;
+            padding: 4px;
         }
         
         .tabs.active {
@@ -107,31 +115,26 @@
         
         .tab {
             flex: 1;
-            padding: 15px 20px;
+            padding: 10px 15px;
             text-align: center;
             border-radius: 8px;
             cursor: pointer;
-            transition: all 0.3s;
-            font-weight: 600;
-            color: #666;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            font-weight: 500;
+            color: var(--apple-secondary-text-color);
             border: none;
             background: none;
         }
         
         .tab.active {
-            background: #667eea;
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+            background: white;
+            color: var(--apple-text-color);
+            font-weight: 600;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
         }
         
-        .tab-content {
-            display: none;
-        }
-        
-        .tab-content.active {
-            display: block;
-        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
         
         .stats-grid {
             display: grid;
@@ -140,119 +143,142 @@
             margin-bottom: 30px;
         }
         
-        .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 25px;
-            border-radius: 15px;
-            text-align: center;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s;
-        }
-        
-        .stat-card:hover {
-            transform: translateY(-5px);
+        .stat-card, .chart-container, .table-container, .controls, .data-insights {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid var(--apple-medium-gray);
+            margin-bottom: 20px;
         }
         
         .stat-number {
             font-size: 2.5em;
             font-weight: bold;
             margin-bottom: 5px;
+            color: var(--apple-text-color);
+        }
+
+        .stat-card div:last-child {
+            color: var(--apple-secondary-text-color);
         }
         
         .controls {
             display: flex;
-            gap: 15px;
-            margin-bottom: 25px;
-            flex-wrap: wrap;
-            align-items: center;
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 12px;
+            flex-direction: column;
+            gap: 20px;
         }
         
-        input, select, button {
-            padding: 12px 16px;
-            border: 2px solid #ddd;
+        .control-group {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 15px;
+            width: 100%;
+        }
+
+        .control-group h4 {
+            width: 100%;
+            margin-bottom: -5px;
+            font-size: 1em;
+            color: var(--apple-secondary-text-color);
+            font-weight: 500;
+        }
+
+        input, select {
+            padding: 10px 14px;
+            border: 1px solid var(--apple-border-color);
             border-radius: 8px;
             font-size: 14px;
-            transition: all 0.3s;
+            background-color: #fcfcfd;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--apple-blue);
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
         }
         
         button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+            border: 1px solid transparent;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button {
+            background-color: var(--apple-medium-gray);
+            color: var(--apple-text-color);
+            border: 1px solid var(--apple-border-color);
+        }
+        button:hover {
+            background-color: #dcdce1;
+        }
+
+        .export-btn {
+            background-color: var(--apple-blue);
             color: white;
             border: none;
-            cursor: pointer;
-            font-weight: 600;
         }
-        
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-        }
-        
-        .export-btn {
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        .export-btn:hover {
+            background-color: #0070e0;
         }
         
         .danger-btn {
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            background-color: white;
+            color: var(--apple-red);
+            border: 1px solid var(--apple-border-color);
+        }
+        .danger-btn:hover {
+             background-color: var(--apple-light-gray);
+             color: var(--apple-red);
         }
         
-        .table-container {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-            margin-bottom: 20px;
-        }
-        
-        .table-wrapper {
-            overflow-x: auto;
-            max-height: 600px;
-            overflow-y: auto;
-        }
+        .table-wrapper { overflow: auto; max-height: 600px; }
         
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 13px;
+            font-size: 14px;
         }
         
         th {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: white;
+            color: var(--apple-secondary-text-color);
             font-weight: 600;
-            padding: 15px 12px;
+            padding: 12px 15px;
             text-align: left;
             position: sticky;
             top: 0;
             z-index: 10;
-            cursor: pointer;
+            border-bottom: 2px solid var(--apple-medium-gray);
         }
         
         td {
-            padding: 12px;
-            border-bottom: 1px solid #eee;
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--apple-medium-gray);
             white-space: nowrap;
             max-width: 200px;
             overflow: hidden;
             text-overflow: ellipsis;
         }
         
-        /* Styl pro OK hodnoty - zelené */
         .ok-value {
-            color: #28a745;
-            font-weight: bold;
-            background-color: #d4edda;
+            color: var(--apple-green);
+            font-weight: 500;
+            background-color: rgba(52, 199, 89, 0.1);
             padding: 4px 8px;
-            border-radius: 4px;
+            border-radius: 6px;
         }
         
-        tr:hover {
-            background-color: #f8f9fa;
-        }
+        tr:hover { background-color: var(--apple-light-gray); }
         
         .pagination {
             display: flex;
@@ -262,24 +288,13 @@
             margin-top: 25px;
         }
         
-        .hidden {
-            display: none !important;
-        }
+        .hidden { display: none !important; }
         
-        .chart-container {
-            background: white;
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-        }
+        .data-insights { border-left: 4px solid var(--apple-blue); }
         
-        .data-insights {
-            background: linear-gradient(135deg, #fff3e0 0%, #fce4ec 100%);
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            border-left: 4px solid #ff9800;
+        h3 {
+            font-size: 1.4em;
+            margin-bottom: 15px;
         }
         
         .insight-item {
@@ -287,38 +302,46 @@
             align-items: center;
             gap: 10px;
             margin-bottom: 10px;
-            padding: 10px;
-            background: white;
+            padding: 12px;
+            background: var(--apple-light-gray);
             border-radius: 8px;
         }
         
         .success-message {
-            background: #d4edda;
-            color: #155724;
+            background: rgba(52, 199, 89, 0.15);
+            color: #1a833b;
             padding: 15px;
-            border-radius: 8px;
-            margin: 20px 0;
-            border-left: 4px solid #28a745;
+            border-radius: 12px;
+            margin: -10px 0 20px 0;
+            border: 1px solid rgba(52, 199, 89, 0.2);
         }
 
-        /* Mobile responsive */
+        #categoryFilterContainer {
+            width: 100%;
+            max-height: 150px;
+            overflow-y: auto;
+            padding: 10px;
+            background-color: var(--apple-light-gray);
+            border-radius: 8px;
+            border: 1px solid var(--apple-border-color);
+        }
+        #categoryFilterContainer label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
         @media (max-width: 768px) {
-            .container {
-                margin: 10px;
-                border-radius: 10px;
-            }
-            
-            .controls {
+            body { padding: 10px; }
+            .main-content { padding: 15px; }
+            h1 { font-size: 2em; }
+            .container, .stat-card, .chart-container, .table-container, .controls { border-radius: 16px; }
+
+            .controls .control-group {
                 flex-direction: column;
                 align-items: stretch;
             }
-            
             .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            
-            h1 {
-                font-size: 2em;
+                grid-template-columns: 1fr 1fr;
             }
         }
     </style>
@@ -336,7 +359,7 @@
                     <div class="upload-icon">📊</div>
                     <div class="upload-text">Přetáhněte soubory nebo klikněte pro výběr</div>
                     <div class="upload-subtext">Podporované formáty: CSV, TSV, Excel (.xlsx, .xls)</div>
-                    <div class="upload-hint">Auto-detekce formátu a inteligentní doporučení grafů</div>
+                    <div class="upload-hint">Inteligentní analýza a doporučení grafů</div>
                     <input type="file" id="fileInput" style="display: none;" accept=".csv,.tsv,.xlsx,.xls" onchange="handleFileUpload(event)">
                 </div>
             </div>
@@ -370,35 +393,30 @@
                     </div>
                     
                     <div class="data-insights">
-                        <h3>🧠 AI Automatická analýza</h3>
-                        <div id="autoInsights">
-                            <div class="insight-item">
-                                <span>💡</span>
-                                <span>Nahrajte CSV soubor pro automatickou AI analýzu</span>
-                            </div>
-                        </div>
+                        <h3>🧠 Automatická analýza</h3>
+                        <div id="autoInsights"></div>
                     </div>
                     
                     <div class="chart-container">
                         <h3>📊 Detekované typy dat</h3>
-                        <div id="dataTypes">Po nahrání souboru se zde zobrazí analýza typů dat</div>
+                        <div id="dataTypes"></div>
                     </div>
                 </div>
                 
                 <div id="table" class="tab-content">
                     <div class="controls">
-                        <label>🔍 Hledat:</label>
-                        <input type="text" id="quickSearch" placeholder="Zadejte text...">
-                        
-                        <label>Záznamů na stránku:</label>
-                        <select id="recordsPerPage">
-                            <option value="25">25</option>
-                            <option value="50" selected>50</option>
-                            <option value="100">100</option>
-                        </select>
-                        
-                        <button onclick="exportToExcel()" class="export-btn">📊 Export Excel</button>
-                        <button onclick="clearData()" class="danger-btn">🗑️ Nový soubor</button>
+                         <div class="control-group">
+                            <label>🔍 Hledat:</label>
+                            <input type="text" id="quickSearch" placeholder="Zadejte text...">
+                            <label>Záznamů na stránku:</label>
+                            <select id="recordsPerPage">
+                                <option value="25">25</option>
+                                <option value="50" selected>50</option>
+                                <option value="100">100</option>
+                            </select>
+                            <button onclick="exportToExcel()" class="export-btn">📊 Export Excel</button>
+                            <button onclick="clearData()" class="danger-btn">🗑️ Nový soubor</button>
+                        </div>
                     </div>
                     
                     <div class="table-container">
@@ -419,59 +437,41 @@
                 
                 <div id="charts" class="tab-content">
                     <div class="controls">
-                        <label>Typ grafu:</label>
-                        <select id="chartType" onchange="updateChart()">
-                            <option value="bar">📊 Sloupcový</option>
-                            <option value="line">📈 Čárový</option>
-                            <option value="pie">🥧 Kruhový</option>
-                            <option value="doughnut">🍩 Kobliha</option>
-                        </select>
-                        
-                        <label>X osa (čas/kategorie):</label>
-                        <select id="chartXAxis" onchange="updateChart()"></select>
-                        
-                        <label>Y osy (hodnoty k porovnání):</label>
-                        <div id="yAxisContainer" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
-                            <select id="chartYAxis1" onchange="updateChart()">
-                                <option value="">Vyberte první hodnotu</option>
-                            </select>
-                            <select id="chartYAxis2" onchange="updateChart()">
-                                <option value="">Vyberte druhou hodnotu (volitelné)</option>
-                            </select>
-                            <select id="chartYAxis3" onchange="updateChart()">
-                                <option value="">Vyberte třetí hodnotu (volitelné)</option>
-                            </select>
-                            <button type="button" onclick="addYAxis()" style="padding: 8px 12px; font-size: 12px;">➕ Přidat hodnotu</button>
+                        <div class="control-group">
+                            <h4>Krok 1: Co chcete analyzovat a měřit?</h4>
+                            <label for="chartXAxis">Kategorie/Čas (osa X):</label>
+                            <select id="chartXAxis" onchange="handleXAxisChange()"></select>
+                            <label for="chartYAxis1">Hodnota (osa Y):</label>
+                            <select id="chartYAxis1" onchange="updateChart()"></select>
+                            <select id="chartYAxis2" onchange="updateChart()"></select>
+                            <select id="chartYAxis3" onchange="updateChart()"></select>
                         </div>
                         
-                        <div style="display: flex; gap: 15px; align-items: center; margin-top: 10px; padding: 15px; background: #e8f4fd; border-radius: 8px;">
-                            <label>📅 Časové období:</label>
-                            <label>Od:</label>
-                            <input type="datetime-local" id="dateFrom" onchange="updateChart()" style="font-size: 12px;">
-                            <label>Do:</label>
-                            <input type="datetime-local" id="dateTo" onchange="updateChart()" style="font-size: 12px;">
-                            <button type="button" onclick="resetDateRange()" style="padding: 6px 12px; font-size: 12px; background: #ffc107; color: #000;">🔄 Resetovat</button>
-                            <button type="button" onclick="setQuickRange('today')" style="padding: 6px 12px; font-size: 12px;">📅 Dnes</button>
-                            <button type="button" onclick="setQuickRange('week')" style="padding: 6px 12px; font-size: 12px;">📅 Týden</button>
-                            <button type="button" onclick="setQuickRange('month')" style="padding: 6px 12px; font-size: 12px;">📅 Měsíc</button>
-                        </div>
-                        
-                        <label>Počet záznamů (při neomezeném období):</label>
-                        <select id="chartDataLimit" onchange="updateChart()">
-                            <option value="50">50 posledních</option>
-                            <option value="100">100 posledních</option>
-                            <option value="200">200 posledních</option>
-                            <option value="500">500 posledních</option>
-                            <option value="1000">1000 posledních</option>
-                            <option value="all">Všechny záznamy</option>
-                        </select>
-                        
-                        <div style="margin-top: 10px;">
+                        <div class="control-group">
+                            <h4>Krok 2: Jak to chcete zobrazit?</h4>
+                             <label for="chartType">Typ grafu:</label>
+                            <select id="chartType" onchange="handleChartTypeChange()">
+                                <option value="bar">📊 Sloupcový</option>
+                                <option value="line">📈 Čárový</option>
+                                <option value="pie">🥧 Kruhový</option>
+                                <option value="doughnut">🍩 Kobliha</option>
+                            </select>
                             <label>
                                 <input type="checkbox" id="smoothLines" onchange="updateChart()"> 
-                                Vyhlazené křivky (pouze pro čárové grafy)
+                                Vyhlazené křivky
                             </label>
                         </div>
+
+                        <div class="control-group" id="filterGroup">
+                             <h4>Krok 3: Upřesnit data (Filtry)</h4>
+                             <div id="categoryFilterContainer" class="hidden"></div>
+                             <div id="dateFilterContainer">
+                                <label>Filtrovat podle data:</label>
+                                <input type="datetime-local" id="dateFrom" onchange="updateChart()">
+                                <input type="datetime-local" id="dateTo" onchange="updateChart()">
+                             </div>
+                        </div>
+
                     </div>
                     
                     <div class="chart-container">
@@ -480,7 +480,7 @@
                     
                     <div class="chart-container">
                         <h3>📊 Statistiky vybraných hodnot</h3>
-                        <div id="chartStats">Vyberte hodnoty pro zobrazení statistik</div>
+                        <div id="chartStats"></div>
                     </div>
                 </div>
                 
@@ -510,89 +510,12 @@
         let fileSize = 0;
         let charts = {};
         let dataTypes = {};
-        let yAxisCounter = 3;
 
-        // Mapování anglických názvů sloupců na české
-        const columnTranslations = {
-            'Name': 'Název',
-            'Price': 'Cena',
-            'Date': 'Datum',
-            'Status': 'Stav',
-            'Type': 'Typ',
-            'Category': 'Kategorie',
-            'Description': 'Popis',
-            'Amount': 'Množství',
-            'Quantity': 'Počet',
-            'ID': 'Identifikátor',
-            'Email': 'E-mail',
-            'Phone': 'Telefon',
-            'Address': 'Adresa',
-            'City': 'Město',
-            'Country': 'Země',
-            'Company': 'Společnost',
-            'Product': 'Produkt',
-            'Order': 'Objednávka',
-            'Customer': 'Zákazník',
-            'Sales': 'Prodeje',
-            'Revenue': 'Tržby',
-            'Cost': 'Náklady',
-            'Profit': 'Zisk',
-            'Region': 'Region',
-            'Time': 'Čas',
-            'Value': 'Hodnota',
-            'Total': 'Celkem',
-            'Average': 'Průměr',
-            'Count': 'Počet',
-            'Sum': 'Součet',
-            'Min': 'Minimum',
-            'Max': 'Maximum',
-            'Active': 'Aktivní',
-            'Inactive': 'Neaktivní',
-            'Pending': 'Čekající',
-            'Completed': 'Dokončeno',
-            'Failed': 'Selhalo',
-            'Success': 'Úspěch',
-            'Error': 'Chyba',
-            'Warning': 'Varování',
-            'Info': 'Informace',
-            'EAN': 'EAN kód',
-            'URL': 'URL adresa',
-            'ResponseTime': 'Doba odezvy',
-            'StatusCode': 'Stavový kód',
-            'Timestamp': 'Časová značka',
-            // Nové překlady pro váš soubor
-            'Datum': 'Datum',
-            'Prostor 1 (Pb1) °C': 'Teplota prostoru 1 °C',
-            'Dveřní spínač': 'Dveřní spínač',
-            'Bez linky': 'Bez linky',
-            'Odtávání': 'Odtávání',
-            'Výparník (Pb2) °C': 'Teplota výparníku °C',
-            'Vetilátory': 'Ventilátory',
-            'Alarm': 'Alarm',
-            'Chlazení': 'Chlazení',
-            'Zapnuto': 'Zapnuto',
-            'Prostor 2 (Pb3) °C': 'Teplota prostoru 2 °C',
-            'Klávesnice': 'Klávesnice',
-            'Nízká teplota - sonda Pb1': 'Nízká teplota - sonda 1',
-            'Vysoká teplota - sonda Pb1': 'Vysoká teplota - sonda 1',
-            'Chyba sondy Pb1': 'Chyba sondy 1',
-            'Chyba sondy Pb2': 'Chyba sondy 2',
-            'Žádaná teplota °C': 'Žádaná teplota °C',
-            'Chyba sondy Pb3': 'Chyba sondy 3',
-            'Otevřené dveře': 'Otevřené dveře',
-            'Chyba RTC': 'Chyba RTC',
-            'Chyba EEPROM': 'Chyba EEPROM'
-        };
-
-        function translateColumnName(originalName) {
-            return columnTranslations[originalName] || originalName;
-        }
-
+        const predefinedHeaders = [];
+        
         function handleFileUpload(event) {
             const files = event.target.files;
-            if (files.length > 0) {
-                processFile(files[0]);
-            }
+            if (files.length > 0) processFile(files[0]);
         }
 
         function processFile(file) {
@@ -615,24 +538,12 @@
                     const workbook = XLSX.read(data, { type: 'array' });
                     const firstSheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[firstSheetName];
-                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
                     
-                    if (jsonData.length > 0) {
-                        const originalColumns = jsonData[0].map(col => col || 'Sloupec');
-                        columns = originalColumns.map(col => translateColumnName(col));
-                        
-                        allData = jsonData.slice(1).map(row => {
-                            const obj = {};
-                            columns.forEach((col, index) => {
-                                obj[col] = row[index] || '';
-                            });
-                            return obj;
-                        });
-                        
-                        initializeApp();
-                    }
+                    const headers = jsonData.length > 0 ? Object.keys(jsonData[0]) : [];
+                    processData(jsonData, headers);
                 } catch (error) {
-                    showMessage('Chyba při čtení Excel souboru: ' + error.message);
+                    showMessage('Chyba při čtení Excel souboru: ' + error.message, 'error');
                 }
             };
             reader.readAsArrayBuffer(file);
@@ -640,803 +551,396 @@
 
         function processCSVFile(file) {
             const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const csvContent = e.target.result;
-                    
-                    if (csvContent.includes(';') && csvContent.includes(':') && csvContent.includes('EAN:')) {
-                        parseRohlikFormat(csvContent);
-                    } else {
-                        parseStandardCSV(csvContent);
-                    }
-                } catch (error) {
-                    showMessage('Chyba při čtení CSV souboru: ' + error.message);
-                }
-            };
+            reader.onload = (e) => parseStandardCSV(e.target.result);
+            reader.onerror = () => showMessage('Chyba při čtení souboru.', 'error');
             reader.readAsText(file, 'utf-8');
         }
 
         function parseStandardCSV(csvContent) {
-            // Detekce speciálního formátu s extra uvozovkami
-            const lines = csvContent.split('\n');
-            let processedContent = csvContent;
-            
-            // Pokud první řádek obsahuje pouze název bez čárek, přeskočíme ho
-            if (lines.length > 1 && lines[0].includes('"') && !lines[0].includes(',')) {
-                processedContent = lines.slice(1).join('\n');
-            }
-            
-            // Odstranění zdvojených uvozovek na začátku a konci řádků
-            if (processedContent.includes('""')) {
-                const cleanedLines = processedContent.split('\n').map(line => {
-                    if (line.startsWith('""') && line.endsWith('""')) {
-                        return line.slice(2, -2);
-                    }
-                    return line;
-                });
-                processedContent = cleanedLines.join('\n');
-            }
-            
-            Papa.parse(processedContent, {
-                header: true,
+            const usePredefinedHeaders = predefinedHeaders && predefinedHeaders.length > 0;
+            Papa.parse(csvContent, {
+                header: !usePredefinedHeaders,
                 dynamicTyping: true,
                 skipEmptyLines: true,
-                delimitersToGuess: [',', '\t', '|', ';'],
+                delimitersToGuess: [',', ';', '\t', '|'],
                 complete: function(results) {
-                    allData = results.data.filter(row => 
-                        Object.values(row).some(val => val !== null && val !== undefined && val !== '')
-                    );
-                    
-                    const originalFields = results.meta.fields || [];
-                    columns = originalFields.map(field => translateColumnName(field));
-                    
-                    allData = allData.map(row => {
-                        const newRow = {};
-                        originalFields.forEach((originalField, index) => {
-                            const translatedField = columns[index];
-                            newRow[translatedField] = row[originalField];
+                    let rawData = results.data;
+                    let headerFields = usePredefinedHeaders ? predefinedHeaders : (results.meta.fields || []);
+                    if (usePredefinedHeaders && Array.isArray(rawData[0])) {
+                        rawData = rawData.map(rowArray => {
+                            const obj = {};
+                            headerFields.forEach((header, index) => { obj[header] = rowArray[index]; });
+                            return obj;
                         });
-                        return newRow;
-                    });
-                    
-                    initializeApp();
+                    }
+                    processData(rawData, headerFields);
                 }
             });
+        }
+        
+        function processData(data, headers) {
+             allData = data.filter(row => 
+                Object.values(row).some(val => val != null && val !== '')
+            );
+            columns = headers;
+            initializeApp();
         }
 
         function initializeApp() {
+            analyzeDataTypes();
+            formatDatesInData();
             filteredData = [...allData];
-            
             document.getElementById('uploadSection').classList.add('hidden');
             document.getElementById('dataSection').classList.remove('hidden');
             document.getElementById('tabsContainer').classList.add('active');
-            
-            analyzeDataTypes();
             updateStats();
-            initializeSelects();
-            initializeDateRange();
+            initializeChartSelects();
             renderTable();
-            
+            displayDataTypes();
+            generateAutoInsights();
             showMessage(`✅ Úspěšně načteno ${allData.length.toLocaleString()} záznamů!`);
+            
+            const xAxisSelect = document.getElementById('chartXAxis');
+            const yAxisSelect = document.getElementById('chartYAxis1');
+            if (xAxisSelect.options.length > 1) xAxisSelect.selectedIndex = 1;
+            if (yAxisSelect.options.length > 1) yAxisSelect.selectedIndex = 1;
+            if (xAxisSelect.value && yAxisSelect.value) handleXAxisChange();
         }
-
+        
+        function formatDatesInData() {
+            const dateColumn = findDateColumn();
+            if (!dateColumn) return;
+            const options = { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' };
+            allData.forEach(row => {
+                const dateObject = parseDate(row[dateColumn]);
+                if (dateObject) row[dateColumn] = dateObject.toLocaleString('cs-CZ', options);
+            });
+        }
+        
         function analyzeDataTypes() {
             dataTypes = {};
-            
             columns.forEach(col => {
-                const values = allData.map(row => row[col]).filter(val => val !== null && val !== undefined && val !== '');
-                if (values.length === 0) {
-                    dataTypes[col] = 'empty';
-                    return;
+                const values = allData.map(row => row[col]).filter(val => val != null && val !== '');
+                if (values.length === 0) { 
+                    dataTypes[col] = 'empty'; 
+                    return; 
                 }
                 
-                const sample = values.slice(0, Math.min(100, values.length));
-                const numberCount = sample.filter(val => !isNaN(val) && !isNaN(parseFloat(val))).length;
-                const numberRatio = numberCount / sample.length;
+                const numericCount = values.filter(v => {
+                    const strVal = String(v).replace(',', '.');
+                    return !isNaN(parseFloat(strVal)) && isFinite(strVal);
+                }).length;
                 
-                if (numberRatio > 0.8) {
+                if ((numericCount / values.length) > 0.8) {
                     dataTypes[col] = 'number';
+                } else if (values.some(v => parseDate(v) !== null)) {
+                     dataTypes[col] = 'date';
                 } else {
-                    const uniqueRatio = new Set(sample).size / sample.length;
-                    if (uniqueRatio < 0.1) {
-                        dataTypes[col] = 'category';
-                    } else {
-                        dataTypes[col] = 'text';
+                    dataTypes[col] = 'category';
+                }
+            });
+        }
+
+        function initializeChartSelects() {
+            const xAxisSelect = document.getElementById('chartXAxis');
+            const yAxisSelects = document.querySelectorAll('#chartYAxis1, #chartYAxis2, #chartYAxis3');
+            
+            const categoryAndDateCols = columns.filter(c => ['category', 'date'].includes(dataTypes[c]));
+            const numericCols = columns.filter(c => dataTypes[c] === 'number');
+
+            xAxisSelect.innerHTML = '<option value="">Vyberte...</option>' + categoryAndDateCols.map(c => `<option value="${c}">${c}</option>`).join('');
+            yAxisSelects.forEach(sel => {
+                sel.innerHTML = '<option value="">Vyberte...</option>' + numericCols.map(c => `<option value="${c}">${c}</option>`).join('');
+            });
+
+            handleChartTypeChange();
+        }
+        
+        function handleChartTypeChange() {
+            const chartType = document.getElementById('chartType').value;
+            const yAxis2 = document.getElementById('chartYAxis2');
+            const yAxis3 = document.getElementById('chartYAxis3');
+            const showMultipleY = !['pie', 'doughnut'].includes(chartType);
+            yAxis2.classList.toggle('hidden', !showMultipleY);
+            yAxis3.classList.toggle('hidden', !showMultipleY);
+            updateChart();
+        }
+        
+        function handleXAxisChange() {
+            updateCategoryFilter();
+            updateChart();
+        }
+        
+        function updateCategoryFilter() {
+            const xAxisCol = document.getElementById('chartXAxis').value;
+            const filterContainer = document.getElementById('categoryFilterContainer');
+            if (!xAxisCol || dataTypes[xAxisCol] !== 'category') {
+                filterContainer.classList.add('hidden');
+                filterContainer.innerHTML = '';
+                return;
+            }
+            
+            const uniqueValues = [...new Set(allData.map(row => row[xAxisCol]))].sort();
+            filterContainer.innerHTML = '<h4>Filtrovat kategorie:</h4>' + uniqueValues.map(val => `
+                <label>
+                    <input type="checkbox" class="category-filter-cb" value="${val}" onchange="updateChart()" checked>
+                    ${val || '(Prázdné)'}
+                </label>
+            `).join('');
+            filterContainer.classList.remove('hidden');
+        }
+
+        function updateChart() {
+            const chartType = document.getElementById('chartType').value;
+            const xAxisCol = document.getElementById('chartXAxis').value;
+            const selectedYAxes = Array.from(document.querySelectorAll('#chartYAxis1, #chartYAxis2, #chartYAxis3'))
+                .map(sel => sel.value).filter(Boolean);
+
+            const ctx = document.getElementById('mainChart');
+            if (!ctx) return;
+            if (charts.main) charts.main.destroy();
+            
+            if (!xAxisCol || selectedYAxes.length === 0) { return; }
+
+            let data = filteredData;
+            const dateFrom = document.getElementById('dateFrom').value;
+            const dateTo = document.getElementById('dateTo').value;
+            if (dateFrom && dateTo) {
+                const from = new Date(dateFrom);
+                const to = new Date(dateTo);
+                const dateCol = findDateColumn();
+                if (dateCol) {
+                    data = data.filter(row => {
+                        const rowDate = parseDate(row[dateCol]);
+                        return rowDate && rowDate >= from && rowDate <= to;
+                    });
+                }
+            }
+            
+            const categoryCheckboxes = document.querySelectorAll('.category-filter-cb:checked');
+            if (document.getElementById('categoryFilterContainer').offsetParent !== null && categoryCheckboxes.length > 0) {
+                const selectedCategories = Array.from(categoryCheckboxes).map(cb => cb.value);
+                data = data.filter(row => selectedCategories.includes(String(row[xAxisCol])));
+            }
+            
+            const labels = [...new Set(data.map(row => row[xAxisCol]))].sort();
+            
+            const datasets = selectedYAxes.map((yAxis, i) => {
+                let chartData;
+                 if (chartType === 'pie' || chartType === 'doughnut') {
+                    chartData = labels.map(label => 
+                        data.filter(row => row[xAxisCol] === label)
+                            .reduce((sum, row) => sum + (parseFloat(String(row[yAxis]).replace(',','.')) || 0), 0)
+                    );
+                } else {
+                    chartData = labels.map(label => {
+                        const matchingRows = data.filter(row => row[xAxisCol] === label);
+                        if (matchingRows.length === 0) return 0;
+                        const sum = matchingRows.reduce((s, r) => s + (parseFloat(String(r[yAxis]).replace(',','.')) || 0), 0);
+                        return sum / matchingRows.length;
+                    });
+                }
+                const colors = generateChartColors( (chartType === 'pie' || chartType === 'doughnut') ? labels.length : selectedYAxes.length );
+                const color = colors[i % colors.length];
+
+                return {
+                    label: yAxis,
+                    data: chartData,
+                    backgroundColor: (chartType === 'pie' || chartType === 'doughnut') ? colors.map(c=>c.bg) : color.bg,
+                    borderColor: (chartType === 'pie' || chartType === 'doughnut') ? colors.map(c=>c.border) : color.border,
+                    borderWidth: 2,
+                    fill: chartType === 'line',
+                    tension: document.getElementById('smoothLines').checked ? 0.4 : 0
+                };
+            });
+            
+            charts.main = new Chart(ctx, {
+                type: chartType,
+                data: { labels, datasets: (chartType === 'pie' || chartType === 'doughnut') ? [datasets[0]] : datasets },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { title: { display: true, text: `Zobrazeno ${data.length} záznamů` } },
+                    scales: (chartType === 'pie' || chartType === 'doughnut') ? {} : {
+                        x: { title: { display: true, text: xAxisCol } },
+                        y: { title: { display: true, text: 'Průměrná hodnota' } }
                     }
                 }
             });
-            
-            displayDataTypes();
-            generateAutoInsights();
+            updateChartStats(data, selectedYAxes);
         }
-
-        function displayDataTypes() {
-            const typeIcons = {
-                'number': '🔢',
-                'category': '🏷️',
-                'text': '📝',
-                'empty': '❌'
-            };
-            
-            const typeNames = {
-                'number': 'číselný',
-                'category': 'kategorie',
-                'text': 'textový',
-                'empty': 'prázdný'
-            };
-            
-            const html = columns.map(col => {
-                const type = dataTypes[col];
-                const values = allData.map(row => row[col]).filter(val => val !== null && val !== undefined && val !== '');
-                const uniqueCount = new Set(values).size;
-                
-                return `
-                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
-                        <strong>${typeIcons[type]} ${col}</strong> (${typeNames[type]})<br>
-                        <small>Unikátní hodnoty: ${uniqueCount}</small>
-                    </div>
-                `;
-            }).join('');
-            
-            document.getElementById('dataTypes').innerHTML = html;
-        }
-
-        function generateAutoInsights() {
-            const insights = [];
-            
-            const duplicates = findDuplicates();
-            if (duplicates.length > 0) {
-                insights.push(`🔄 Nalezeno ${duplicates.length} duplicitních záznamů`);
-            }
-            
-            const emptyColumns = columns.filter(col => {
-                const emptyCount = allData.filter(row => !row[col] || row[col] === '').length;
-                return emptyCount > allData.length * 0.5;
-            });
-            
-            if (emptyColumns.length > 0) {
-                insights.push(`⚠️ Sloupce s více než 50% prázdných hodnot: ${emptyColumns.join(', ')}`);
-            }
-            
-            if (insights.length === 0) {
-                insights.push('✅ Data vypadají kvalitně bez zjevných problémů!');
-            }
-            
-            const html = insights.map(insight => `
-                <div class="insight-item">
-                    <span>${insight}</span>
-                </div>
-            `).join('');
-            
-            document.getElementById('autoInsights').innerHTML = html;
-        }
-
-        function switchTab(tabName) {
-            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            
-            document.querySelector(`[onclick="switchTab('${tabName}')"]`).classList.add('active');
-            document.getElementById(tabName).classList.add('active');
-            
-            if (tabName === 'charts') {
-                setTimeout(updateChart, 100);
-            }
-        }
-
-        function updateStats() {
-            document.getElementById('totalRecords').textContent = allData.length.toLocaleString();
-            document.getElementById('totalColumns').textContent = columns.length;
-            document.getElementById('fileSize').textContent = formatFileSize(fileSize);
-            
-            const totalCells = allData.length * columns.length;
-            const emptyCells = allData.reduce((sum, row) => {
-                return sum + columns.filter(col => !row[col] || row[col] === '').length;
-            }, 0);
-            const quality = Math.round(((totalCells - emptyCells) / totalCells) * 100);
-            document.getElementById('dataQuality').textContent = quality + '%';
-        }
-
-        function formatFileSize(bytes) {
-            if (bytes === 0) return '0 B';
-            const k = 1024;
-            const sizes = ['B', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-        }
-
-        function initializeSelects() {
-            const yAxisSelects = ['chartYAxis1', 'chartYAxis2', 'chartYAxis3'];
-            const xAxisSelect = ['chartXAxis'];
-            const allSelects = [...xAxisSelect, ...yAxisSelects];
-            
-            allSelects.forEach(selectId => {
-                const select = document.getElementById(selectId);
-                if (select) {
-                    const isYAxis = yAxisSelects.includes(selectId);
-                    const placeholder = isYAxis ? 'Vyberte hodnotu' : 'Vyberte sloupec';
-                    
-                    select.innerHTML = `<option value="">${placeholder}</option>` +
-                        columns.map(col => `<option value="${col}">${col}</option>`).join('');
-                }
-            });
-        }
-
-        function initializeDateRange() {
-            const dateColumn = findDateColumn();
-            if (!dateColumn) return;
-            
-            const dates = allData.map(row => parseDate(row[dateColumn])).filter(d => d);
-            if (dates.length === 0) return;
-            
-            dates.sort((a, b) => a - b);
-            const minDate = dates[0];
-            const maxDate = dates[dates.length - 1];
-            
-            const dateFrom = document.getElementById('dateFrom');
-            const dateTo = document.getElementById('dateTo');
-            
-            if (dateFrom && dateTo) {
-                dateFrom.value = formatDateForInput(minDate);
-                dateTo.value = formatDateForInput(maxDate);
-            }
-        }
-
-        function findDateColumn() {
-            const dateKeywords = ['datum', 'date', 'time', 'čas', 'timestamp'];
-            
-            for (const col of columns) {
-                const lowerCol = col.toLowerCase();
-                if (dateKeywords.some(keyword => lowerCol.includes(keyword))) {
-                    return col;
-                }
-            }
-            
-            return columns[0];
-        }
-
-        function parseDate(dateString) {
-            if (!dateString) return null;
-            
-            const str = dateString.toString().trim();
-            
-            // European format DD/MM/YYYY
-            const match1 = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{1,2}):(\d{1,2})$/);
-            if (match1) {
-                const [, day, month, year, hour, minute, second] = match1;
-                return new Date(year, month - 1, day, hour, minute, second);
-            }
-            
-            // ISO format
-            const match2 = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})\s+(\d{1,2}):(\d{1,2}):(\d{1,2})$/);
-            if (match2) {
-                const [, year, month, day, hour, minute, second] = match2;
-                return new Date(year, month - 1, day, hour, minute, second);
-            }
-            
-            const parsed = new Date(str);
-            if (!isNaN(parsed.getTime())) {
-                return parsed;
-            }
-            
-            return null;
-        }
-
-        function formatDateForInput(date) {
-            if (!date) return '';
-            
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            const hours = String(date.getHours()).padStart(2, '0');
-            const minutes = String(date.getMinutes()).padStart(2, '0');
-            
-            return `${year}-${month}-${day}T${hours}:${minutes}`;
-        }
-
-        function resetDateRange() {
-            initializeDateRange();
-            updateChart();
-        }
-
-        function setQuickRange(range) {
-            const now = new Date();
-            const dateFrom = document.getElementById('dateFrom');
-            const dateTo = document.getElementById('dateTo');
-            
-            if (!dateFrom || !dateTo) return;
-            
-            let fromDate;
-            
-            switch (range) {
-                case 'today':
-                    fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                    break;
-                case 'week':
-                    fromDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-                    break;
-                case 'month':
-                    fromDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-                    break;
-                default:
-                    return;
-            }
-            
-            dateFrom.value = formatDateForInput(fromDate);
-            dateTo.value = formatDateForInput(now);
-            updateChart();
-        }
-
-        function filterDataByDateRange(data) {
-            const dateFrom = document.getElementById('dateFrom');
-            const dateTo = document.getElementById('dateTo');
-            
-            if (!dateFrom || !dateTo || !dateFrom.value || !dateTo.value) {
-                return data;
-            }
-            
-            const fromDate = new Date(dateFrom.value);
-            const toDate = new Date(dateTo.value);
-            const dateColumn = findDateColumn();
-            
-            if (!dateColumn) return data;
-            
-            return data.filter(row => {
-                const rowDate = parseDate(row[dateColumn]);
-                if (!rowDate) return false;
-                
-                return rowDate >= fromDate && rowDate <= toDate;
-            });
-        }
-
-        function addYAxis() {
-            yAxisCounter++;
-            const container = document.getElementById('yAxisContainer');
-            const newSelect = document.createElement('select');
-            newSelect.id = `chartYAxis${yAxisCounter}`;
-            newSelect.onchange = updateChart;
-            newSelect.innerHTML = '<option value="">Vyberte další hodnotu (volitelné)</option>' +
-                columns.map(col => `<option value="${col}">${col}</option>`).join('');
-            
-            const addButton = container.querySelector('button');
-            container.insertBefore(newSelect, addButton);
-        }
-
-        function getSelectedYAxes() {
-            const yAxes = [];
-            let counter = 1;
-            
-            while (true) {
-                const select = document.getElementById(`chartYAxis${counter}`);
-                if (!select) break;
-                
-                if (select.value) {
-                    yAxes.push(select.value);
-                }
-                counter++;
-            }
-            
-            return yAxes;
-        }
-
-        function generateChartColors(count) {
-            const colors = [
-                { bg: 'rgba(102, 126, 234, 0.2)', border: 'rgba(102, 126, 234, 1)' },
-                { bg: 'rgba(255, 99, 132, 0.2)', border: 'rgba(255, 99, 132, 1)' },
-                { bg: 'rgba(54, 162, 235, 0.2)', border: 'rgba(54, 162, 235, 1)' },
-                { bg: 'rgba(255, 206, 86, 0.2)', border: 'rgba(255, 206, 86, 1)' },
-                { bg: 'rgba(75, 192, 192, 0.2)', border: 'rgba(75, 192, 192, 1)' },
-                { bg: 'rgba(153, 102, 255, 0.2)', border: 'rgba(153, 102, 255, 1)' },
-                { bg: 'rgba(255, 159, 64, 0.2)', border: 'rgba(255, 159, 64, 1)' },
-                { bg: 'rgba(199, 199, 199, 0.2)', border: 'rgba(199, 199, 199, 1)' }
-            ];
-            
-            return colors.slice(0, count);
-        }
-
-        function calculateStats(data, columns) {
-            const stats = {};
-            
-            columns.forEach(col => {
-                const values = data.map(row => parseFloat(row[col])).filter(val => !isNaN(val));
-                
-                if (values.length > 0) {
-                    const sum = values.reduce((a, b) => a + b, 0);
-                    const avg = sum / values.length;
-                    const min = Math.min(...values);
-                    const max = Math.max(...values);
-                    const median = values.sort((a, b) => a - b)[Math.floor(values.length / 2)];
-                    
-                    stats[col] = {
-                        count: values.length,
-                        sum: sum.toFixed(2),
-                        average: avg.toFixed(2),
-                        min: min.toFixed(2),
-                        max: max.toFixed(2),
-                        median: median.toFixed(2)
-                    };
-                }
-            });
-            
-            return stats;
-        }
-
-        function isOkValue(value) {
-            if (!value) return false;
-            const normalizedValue = value.toString().toLowerCase().trim();
-            return normalizedValue === 'ok' || normalizedValue === 'Ok' || normalizedValue === 'OK';
-        }
-
+        
         function renderTable() {
             const thead = document.getElementById('tableHead');
             const tbody = document.getElementById('tableBody');
-            
             if (!thead || !tbody) return;
-            
             thead.innerHTML = `<tr>${columns.map(col => `<th>${col}</th>`).join('')}</tr>`;
-            tbody.innerHTML = '';
-            
-            const startIndex = (currentPage - 1) * recordsPerPage;
-            const endIndex = startIndex + recordsPerPage;
-            const pageData = filteredData.slice(startIndex, endIndex);
-            
+            const frag = document.createDocumentFragment();
+            const pageData = filteredData.slice((currentPage - 1) * recordsPerPage, currentPage * recordsPerPage);
             pageData.forEach(row => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = columns.map(col => {
-                    const value = row[col] || '';
-                    const cellClass = isOkValue(value) ? 'ok-value' : '';
-                    return `<td title="${value}" class="${cellClass}">${value}</td>`;
-                }).join('');
-                tbody.appendChild(tr);
+                const tr = frag.appendChild(document.createElement('tr'));
+                tr.innerHTML = columns.map(col => `<td title="${row[col] || ''}" class="${isOkValue(row[col]) ? 'ok-value' : ''}">${row[col] || ''}</td>`).join('');
             });
-            
+            tbody.innerHTML = '';
+            tbody.appendChild(frag);
             updatePagination();
         }
 
         function updatePagination() {
             const totalPages = Math.ceil(filteredData.length / recordsPerPage);
-            document.getElementById('pageInfo').textContent = `Stránka ${currentPage} z ${totalPages}`;
+            document.getElementById('pageInfo').textContent = `Stránka ${currentPage} z ${totalPages || 1}`;
+        }
+        
+        function updateStats() {
+            document.getElementById('totalRecords').textContent = allData.length.toLocaleString();
+            document.getElementById('totalColumns').textContent = columns.length;
+            document.getElementById('fileSize').textContent = formatFileSize(fileSize);
+            const totalCells = allData.length * columns.length;
+            const emptyCells = allData.reduce((sum, row) => sum + Object.values(row).filter(v => v==null || v==='').length, 0);
+            const quality = totalCells > 0 ? Math.round(((totalCells - emptyCells) / totalCells) * 100) : 100;
+            document.getElementById('dataQuality').textContent = quality + '%';
         }
 
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const i = Math.floor(Math.log(bytes) / Math.log(1024));
+            return parseFloat((bytes / Math.pow(1024, i)).toFixed(2)) + ' ' + ['B', 'KB', 'MB', 'GB'][i];
+        }
+
+        function findDateColumn() {
+            for (const col of columns) {
+                if (dataTypes[col] === 'date') return col;
+            }
+            return null;
+        }
+
+        function parseDate(dateString) {
+            if (!dateString || typeof dateString !== 'string') return null;
+            let str = dateString.trim();
+            const matchCustom = str.match(/^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})/);
+            if (matchCustom) {
+                const [, year, month, day, hour, minute, second] = matchCustom;
+                return new Date(year, month - 1, day, hour, minute, second);
+            }
+            if (str.includes('.') && str.includes(':') && str.includes(' ')) {
+                str = str.replace(',', '');
+                const parsed = new Date(str);
+                if (!isNaN(parsed.getTime())) {
+                    return parsed;
+                }
+            }
+            return null;
+        }
+
+        function isOkValue(value) { return value?.toString().toLowerCase().trim() === 'ok'; }
+        
         function changePage(direction) {
             const totalPages = Math.ceil(filteredData.length / recordsPerPage);
             const newPage = currentPage + direction;
-            
             if (newPage >= 1 && newPage <= totalPages) {
                 currentPage = newPage;
                 renderTable();
             }
         }
-
-        function updateChart() {
-            const chartType = document.getElementById('chartType');
-            const xAxis = document.getElementById('chartXAxis');
-            const dataLimit = document.getElementById('chartDataLimit');
-            const smoothLines = document.getElementById('smoothLines');
-            
-            if (!chartType || !xAxis || !xAxis.value) return;
-            
-            const selectedYAxes = getSelectedYAxes();
-            if (selectedYAxes.length === 0) return;
-            
-            const ctx = document.getElementById('mainChart');
-            if (!ctx) return;
-            
-            if (charts.main) {
-                charts.main.destroy();
-            }
-            
-            let data = filterDataByDateRange(filteredData);
-            
-            const dateFrom = document.getElementById('dateFrom');
-            const dateTo = document.getElementById('dateTo');
-            const hasDateRange = dateFrom && dateTo && dateFrom.value && dateTo.value;
-            
-            if (!hasDateRange) {
-                const limit = dataLimit.value === 'all' ? data.length : parseInt(dataLimit.value);
-                data = data.slice(-limit);
-            }
-            
-            const recordCount = data.length;
-            const totalCount = filteredData.length;
-            
-            const labels = data.map(row => {
-                const value = row[xAxis.value];
-                if (typeof value === 'string' && value.length > 15) {
-                    return value.substring(0, 15) + '...';
-                }
-                return value;
-            });
-            
-            const colors = generateChartColors(selectedYAxes.length);
-            
-            const datasets = selectedYAxes.map((yAxis, index) => {
-                const values = data.map(row => {
-                    const val = row[yAxis];
-                    return typeof val === 'number' ? val : parseFloat(val) || 0;
-                });
-                
-                const color = colors[index] || colors[0];
-                
-                return {
-                    label: yAxis,
-                    data: values,
-                    backgroundColor: color.bg,
-                    borderColor: color.border,
-                    borderWidth: 2,
-                    fill: false,
-                    tension: smoothLines && smoothLines.checked ? 0.4 : 0
-                };
-            });
-            
-            const finalDatasets = (['pie', 'doughnut'].includes(chartType.value)) ? [datasets[0]] : datasets;
-            
-            charts.main = new Chart(ctx, {
-                type: chartType.value,
-                data: {
-                    labels: labels,
-                    datasets: finalDatasets
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false,
-                    },
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top'
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return `${context.dataset.label}: ${context.parsed.y || context.parsed}`;
-                                }
-                            }
-                        },
-                        title: {
-                            display: true,
-                            text: hasDateRange ? 
-                                `Zobrazeno ${recordCount} záznamů z vybraného období` : 
-                                `Zobrazeno ${recordCount} z ${totalCount} záznamů`
-                        }
-                    },
-                    scales: chartType.value === 'pie' || chartType.value === 'doughnut' ? {} : {
-                        x: {
-                            display: true,
-                            title: {
-                                display: true,
-                                text: xAxis.value
-                            }
-                        },
-                        y: {
-                            display: true,
-                            title: {
-                                display: true,
-                                text: selectedYAxes.join(', ')
-                            }
-                        }
-                    }
-                }
-            });
-            
-            updateChartStats(data, selectedYAxes);
-        }
-
+        
         function updateChartStats(data, selectedColumns) {
             const statsContainer = document.getElementById('chartStats');
-            if (!statsContainer || selectedColumns.length === 0) return;
-            
+            if (!statsContainer || selectedColumns.length === 0) { statsContainer.innerHTML = 'Vyberte hodnoty pro zobrazení statistik.'; return; }
             const stats = calculateStats(data, selectedColumns);
-            
-            let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">';
-            
-            selectedColumns.forEach(col => {
-                if (stats[col]) {
-                    const stat = stats[col];
-                    html += `
-                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #667eea;">
-                            <h4 style="margin-bottom: 10px; color: #333;">${col}</h4>
-                            <div style="font-size: 13px; line-height: 1.5;">
-                                <div><strong>Počet:</strong> ${stat.count}</div>
-                                <div><strong>Průměr:</strong> ${stat.average}</div>
-                                <div><strong>Minimum:</strong> ${stat.min}</div>
-                                <div><strong>Maximum:</strong> ${stat.max}</div>
-                                <div><strong>Medián:</strong> ${stat.median}</div>
-                                <div><strong>Součet:</strong> ${stat.sum}</div>
-                            </div>
-                        </div>
-                    `;
-                }
-            });
-            
-            html += '</div>';
-            statsContainer.innerHTML = html;
+            statsContainer.innerHTML = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">' +
+                selectedColumns.map(col => stats[col] ? `
+                    <div style="background: var(--apple-light-gray); padding: 15px; border-radius: 8px;">
+                        <h4 style="margin-bottom: 10px;">${col}</h4>
+                        <div style="font-size: 13px; line-height: 1.6; color: var(--apple-secondary-text-color);">${Object.entries(stats[col]).map(([key, value]) => `<div style="display: flex; justify-content: space-between;"><strong>${key}:</strong> ${value}</div>`).join('')}</div>
+                    </div>` : '').join('') + '</div>';
         }
 
-        function findDuplicates() {
-            const seen = new Set();
-            const duplicates = [];
-            
-            allData.forEach(row => {
-                const key = JSON.stringify(row);
-                if (seen.has(key)) {
-                    duplicates.push(row);
-                } else {
-                    seen.add(key);
-                }
-            });
-            
-            return duplicates;
-        }
-
-        function removeDuplicates() {
-            const originalLength = allData.length;
-            const seen = new Set();
-            
-            allData = allData.filter(row => {
-                const key = JSON.stringify(row);
-                if (seen.has(key)) {
-                    return false;
-                } else {
-                    seen.add(key);
-                    return true;
-                }
-            });
-            
-            filteredData = [...allData];
-            updateStats();
-            renderTable();
-            
-            const removedCount = originalLength - allData.length;
-            showToolResult(`🗑️ Odstraněno ${removedCount} duplicitních záznamů.`);
-        }
-
-        function removeEmptyRows() {
-            const originalLength = allData.length;
-            
-            allData = allData.filter(row => 
-                Object.values(row).some(value => value !== null && value !== undefined && value !== '')
-            );
-            
-            filteredData = [...allData];
-            updateStats();
-            renderTable();
-            
-            const removedCount = originalLength - allData.length;
-            showToolResult(`📭 Odstraněno ${removedCount} prázdných řádků.`);
-        }
-
-        function validateData() {
-            const issues = [];
-            
+        function calculateStats(data, columns) {
+            const stats = {};
             columns.forEach(col => {
-                const emptyCount = allData.filter(row => !row[col] || row[col] === '').length;
-                if (emptyCount > 0) {
-                    issues.push(`${col}: ${emptyCount} prázdných hodnot`);
+                const values = data.map(row => parseFloat(String(row[col]).replace(',','.'))).filter(val => !isNaN(val));
+                if (values.length > 0) {
+                    const sum = values.reduce((a, b) => a + b, 0);
+                    stats[col] = {
+                        Počet: values.length, Součet: sum.toFixed(2), Průměr: (sum / values.length).toFixed(2),
+                        Min: Math.min(...values).toFixed(2), Max: Math.max(...values).toFixed(2),
+                        Medián: values.sort((a,b)=>a-b)[Math.floor(values.length / 2)].toFixed(2)
+                    };
                 }
             });
-            
-            const result = issues.length > 0 ? 
-                `Nalezené problémy:<br>${issues.join('<br>')}` :
-                '✅ Všechna data jsou validní!';
-            
-            showToolResult(result);
+            return stats;
+        }
+        
+        function generateChartColors(count) {
+            const baseColors = [
+                { bg: 'rgba(0, 122, 255, 0.6)', border: 'rgba(0, 122, 255, 1)' }, { bg: 'rgba(52, 199, 89, 0.6)', border: 'rgba(52, 199, 89, 1)' },
+                { bg: 'rgba(255, 149, 0, 0.6)', border: 'rgba(255, 149, 0, 1)' }, { bg: 'rgba(255, 59, 48, 0.6)', border: 'rgba(255, 59, 48, 1)' },
+                { bg: 'rgba(175, 82, 222, 0.6)', border: 'rgba(175, 82, 222, 1)' }
+            ];
+            let colors = [];
+            for (let i = 0; i < count; i++) colors.push(baseColors[i % baseColors.length]);
+            return colors;
         }
 
-        function showToolResult(message) {
-            document.getElementById('toolsContent').innerHTML = `<div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">${message}</div>`;
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.querySelector(`[onclick="switchTab('${tabName}')"]`).classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+            if (tabName === 'charts') updateChart();
         }
 
-        function exportToExcel() {
-            if (!filteredData || filteredData.length === 0) {
-                showMessage('Žádná data k exportu.');
-                return;
-            }
-            
-            const exportData = filteredData.map(row => {
-                const newRow = {};
-                columns.forEach(col => {
-                    newRow[col] = row[col] || '';
-                });
-                return newRow;
-            });
-            
-            const ws = XLSX.utils.json_to_sheet(exportData);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'Data');
-            
-            const exportFileName = fileName.replace(/\.[^/.]+$/, '') + '_export.xlsx';
-            XLSX.writeFile(wb, exportFileName);
-            
-            showMessage(`📊 Export dokončen: ${exportFileName}`);
-        }
-
-        function clearData() {
-            if (confirm('Opravdu chcete smazat všechna data a nahrát nový soubor?')) {
-                allData = [];
-                filteredData = [];
-                columns = [];
-                fileName = '';
-                fileSize = 0;
-                currentPage = 1;
-                dataTypes = {};
-                
-                Object.values(charts).forEach(chart => {
-                    if (chart && chart.destroy) chart.destroy();
-                });
-                charts = {};
-                
-                document.getElementById('uploadSection').classList.remove('hidden');
-                document.getElementById('dataSection').classList.add('hidden');
-                document.getElementById('tabsContainer').classList.remove('active');
-                document.getElementById('fileInput').value = '';
-                
-                document.querySelectorAll('.tab').forEach((tab, index) => {
-                    tab.classList.toggle('active', index === 0);
-                });
-                document.querySelectorAll('.tab-content').forEach((content, index) => {
-                    content.classList.toggle('active', index === 0);
-                });
-                
-                showMessage('🗑️ Data byla smazána. Můžete nahrát nový soubor.');
-            }
-        }
-
-        function showMessage(message) {
-            // Zkontroluj jestli už neexistuje zpráva se stejným textem
-            const existingMessages = document.querySelectorAll('.success-message');
-            for (let msg of existingMessages) {
-                if (msg.textContent.includes(message)) {
-                    return; // Zpráva už existuje, nevytvářej novou
-                }
-            }
-            
+        function showMessage(message, type = 'success') {
             const messageDiv = document.createElement('div');
             messageDiv.className = 'success-message';
-            messageDiv.innerHTML = `<div style="display: flex; align-items: center; gap: 10px;">
-                <span>${message}</span>
-            </div>`;
-            
+            if (type === 'error') {
+                messageDiv.style.backgroundColor = 'rgba(255, 59, 48, 0.15)';
+                messageDiv.style.color = '#c50f0f';
+            }
+            messageDiv.innerHTML = `<span>${message}</span>`;
             const container = document.querySelector('.main-content');
             container.insertBefore(messageDiv, container.firstChild);
+            setTimeout(() => messageDiv.remove(), 5000);
+        }
+        
+        function displayDataTypes() {
+            const container = document.getElementById('dataTypes');
+            const typeIcons = { 'number': '🔢', 'category': '🏷️', 'text': '📝', 'date': '📅', 'empty': '❌' };
+            const typeNames = { 'number': 'Číslo', 'category': 'Kategorie', 'text': 'Text', 'date': 'Datum', 'empty': 'Prázdný' };
+            container.innerHTML = columns.map(col => `
+                <div class="insight-item">
+                    <span>${typeIcons[dataTypes[col]] || '❓'} <strong>${col}</strong> <em style="color: var(--apple-secondary-text-color)">(${typeNames[dataTypes[col]] || 'Neznámý'})</em></span>
+                </div>
+            `).join('');
+        }
+        
+        function generateAutoInsights() {
+            const container = document.getElementById('autoInsights');
+            const insights = [];
+            const duplicates = allData.length - new Set(allData.map(row => JSON.stringify(row))).size;
+            if (duplicates > 0) insights.push(`🔄 Nalezeno ${duplicates} duplicitních záznamů.`);
             
-            setTimeout(() => {
-                messageDiv.remove();
-            }, 5000);
+            const emptyCols = columns.filter(col => allData.every(row => row[col] == null || row[col] === ''));
+            if (emptyCols.length > 0) insights.push(`🗑️ Následující sloupce jsou zcela prázdné: ${emptyCols.join(', ')}.`);
+            
+            if (insights.length === 0) insights.push('✅ Vypadá to, že data jsou v dobré kondici. Nebyly nalezeny žádné zjevné problémy.');
+
+            container.innerHTML = insights.map(insight => `<div class="insight-item"><span>${insight}</span></div>`).join('');
         }
 
-        // Event listeners
-        document.addEventListener('DOMContentLoaded', function() {
-            const quickSearch = document.getElementById('quickSearch');
-            if (quickSearch) {
-                quickSearch.addEventListener('input', function() {
-                    const searchTerm = this.value.toLowerCase();
-                    
-                    filteredData = allData.filter(row => {
-                        if (searchTerm) {
-                            return Object.values(row).some(value => 
-                                value && value.toString().toLowerCase().includes(searchTerm)
-                            );
-                        }
-                        return true;
-                    });
-                    
-                    currentPage = 1;
-                    renderTable();
-                });
-            }
-            
-            const recordsSelect = document.getElementById('recordsPerPage');
-            if (recordsSelect) {
-                recordsSelect.addEventListener('change', function() {
-                    recordsPerPage = parseInt(this.value);
-                    currentPage = 1;
-                    renderTable();
-                });
-            }
+        document.getElementById('quickSearch').addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            filteredData = allData.filter(row => Object.values(row).some(val => val?.toString().toLowerCase().includes(searchTerm)));
+            currentPage = 1;
+            renderTable();
         });
+
+        document.getElementById('recordsPerPage').addEventListener('change', function() {
+            recordsPerPage = parseInt(this.value);
+            currentPage = 1;
+            renderTable();
+        });
+
     </script>
 </body>
 </html>
