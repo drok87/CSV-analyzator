@@ -6,6 +6,8 @@
     <title>Interaktivní Data Analyzátor s ML</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <!-- Opraveno: Použití správného souboru pro prohlížeč (cdn.js) -->
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/locale/cs/cdn.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -209,6 +211,7 @@
         .stat-number { font-size: 2em; font-weight: bold; margin-bottom: 5px; }
 
         .controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+        .controls.sub-controls { margin-top: 10px; margin-bottom: 0; }
         input, select, button {
             padding: 10px 15px;
             border: 1px solid var(--border-color);
@@ -236,6 +239,9 @@
         }
         button:hover { background: var(--primary-hover); }
         button:disabled { background: #8E8E93; cursor: not-allowed; }
+        
+        .btn-secondary { background: var(--secondary-text-color); }
+        .btn-secondary:hover { background: #a1a1a6; }
 
         .btn-success { background: var(--success-color); }
         .btn-danger { background: var(--danger-color); }
@@ -245,7 +251,7 @@
         th { background: var(--container-bg); color: var(--secondary-text-color); font-weight: 600; position: sticky; top: 0; text-transform: uppercase; font-size: 0.8em; }
         tr:last-child td { border-bottom: none; }
         tr:hover { background: var(--tab-bg); }
-        .table-wrapper { border: 1px solid var(--border-color); border-radius: var(--radius); }
+        .table-wrapper { border: 1px solid var(--border-color); border-radius: var(--radius); max-height: 60vh; overflow-y: auto;}
         
         .pagination { display: flex; justify-content: center; gap: 10px; margin-top: 20px; }
         .pagination button { padding: 8px 12px; background: var(--container-bg); color: var(--primary-color); border: 1px solid var(--border-color); }
@@ -283,6 +289,15 @@
 
         .clickable-row { cursor: pointer; }
         .hour-detail td { padding: 0 !important; border-bottom: 1px solid var(--border-color); }
+        
+        .chart-container {
+            position: relative;
+            height: 50vh;
+        }
+
+        #widget-main-chart .chart-container {
+            height: 300px;
+        }
 
         @media (max-width: 768px) {
             body { padding: 5px; }
@@ -363,6 +378,12 @@
                         <h3>Základní informace</h3>
                         <div id="dataInfo">Načítání...</div>
                     </div>
+                     <div class="widget" id="widget-main-chart">
+                        <h3>Hlavní graf</h3>
+                        <div class="chart-container">
+                           <canvas id="overviewChart"></canvas>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -370,10 +391,15 @@
             <div id="table" class="tab-content">
                 <div class="controls">
                     <input type="text" id="searchInput" placeholder="🔍 Hledat..." onkeyup="applyFilters()">
-                    <select id="itemsPerPage" onchange="changeItemsPerPage()"><option value="25">25</option><option value="50">50</option><option value="100">100</option></select>
+                    <select id="itemsPerPage" onchange="changeItemsPerPage()"><option value="25">25</option><option value="50">50</option><option value="100">100</option><option value="500">500</option></select>
                     <input type="date" id="startDate" onchange="applyFilters()">
                     <input type="date" id="endDate" onchange="applyFilters()">
-                    <button onclick="exportCSV()">📊 Export tabulky</button>
+                    <button class="btn-danger" onclick="clearFilters()">Vyčistit filtry</button>
+                </div>
+                 <div class="controls sub-controls">
+                    <button class="btn-secondary" onclick="setDateRange('last7days')">Posledních 7 dní</button>
+                    <button class="btn-secondary" onclick="setDateRange('thisMonth')">Tento měsíc</button>
+                    <button class="btn-secondary" onclick="setDateRange('lastMonth')">Minulý měsíc</button>
                 </div>
                 <div class="table-container">
                     <div class="table-wrapper">
@@ -405,7 +431,13 @@
             </div>
             
             <!-- Analytics -->
-            <div id="analytics" class="tab-content"><div id="analyticsContent"></div></div>
+            <div id="analytics" class="tab-content">
+                <div class="controls">
+                    <label for="analyticsColumn">Vyberte data pro analýzu:</label>
+                    <select id="analyticsColumn" onchange="updateAdvancedAnalytics()"></select>
+                </div>
+                <div id="analyticsContent"></div>
+            </div>
             
             <!-- Machine Learning -->
             <div id="ml" class="tab-content">
@@ -453,7 +485,7 @@
         // Global variables
         let datasets = [null, null, null];
         let selectedDatasetIndex = 0;
-        let currentPage = 1, itemsPerPage = 50, mainChartInstance = null, predictionChartInstance = null, comparisonChartInstance = null;
+        let currentPage = 1, itemsPerPage = 50, mainChartInstance = null, overviewChartInstance = null, predictionChartInstance = null, comparisonChartInstance = null;
 
         // --- Theme Manager ---
         function toggleTheme() {
@@ -462,6 +494,7 @@
             localStorage.setItem('theme', theme);
             document.querySelector('.theme-switcher').textContent = theme === 'dark' ? '☀️' : '🌙';
             if (mainChartInstance) updateChart();
+            if (overviewChartInstance) renderOverviewChart();
         }
 
         function applySavedTheme() {
@@ -530,7 +563,7 @@
             reader.onload = (e) => {
                 try {
                     const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
+                    const workbook = XLSX.read(data, { type: 'array', cellDates:true });
                     const firstSheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[firstSheetName];
                     const jsonData = XLSX.utils.sheet_to_json(worksheet);
@@ -601,24 +634,11 @@
                         }
 
                         const data = [];
-                        const dateColIndex = columns.findIndex(c => c.toLowerCase().includes('datum') || c.toLowerCase().includes('logged'));
                         for (let i = dataStartIndex; i < lines.length; i++) {
                             const values = lines[i].split(separator).map(v => v.trim().replace(/^"|"$/g, ''));
                             if (values.length >= columns.length) {
                                 const row = {};
                                 columns.forEach((col, idx) => { row[col] = values[idx] || ''; });
-                                if (dateColIndex !== -1) {
-                                    const dateStr = values[dateColIndex];
-                                    // Try parsing YYYY-MM-DD format
-                                    let parts = dateStr.match(/(\d{4})-(\d{2})-(\d{2})/);
-                                    if(parts) {
-                                        row['dateObject'] = new Date(parts[1], parts[2] - 1, parts[3]);
-                                    } else {
-                                        // Try parsing DD/MM/YYYY HH:MM:SS format
-                                        parts = dateStr.match(/(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):(\d{2})/);
-                                        if(parts) row['dateObject'] = new Date(parts[3], parts[2] - 1, parts[1], parts[4], parts[5], parts[6]);
-                                    }
-                                }
                                 data.push(row);
                             }
                         }
@@ -649,13 +669,47 @@
                 });
             }
 
-            // Convert comma decimal to dot decimal for numeric columns
+            // Convert comma decimal to dot decimal and parse dates
+            const dateColName = columns.find(c => c.toLowerCase().includes('datum') || c.toLowerCase().includes('logged'));
             allData.forEach(row => {
                 numericColumns.forEach(col => {
                     if (typeof row[col] === 'string') {
                         row[col] = row[col].replace(',', '.');
                     }
                 });
+                if (dateColName && row[dateColName] && !(row.dateObject instanceof Date)) {
+                     const dateStr = String(row[dateColName]);
+                     let date;
+                     
+                     if (row[dateColName] instanceof Date) {
+                         date = row[dateColName];
+                     }
+                     // Handle Excel's numeric date format
+                     else if (!isNaN(dateStr) && Number(dateStr) > 10000) { // Basic check for excel date number
+                         date = new Date(Math.round((dateStr - 25569) * 86400 * 1000));
+                     } else {
+                         // Handle "YYYY-MM-DD HH:MM:SS"
+                         let parts = dateStr.match(/(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{1,2})/);
+                         if (parts) {
+                            date = new Date(parts[1], parseInt(parts[2], 10) - 1, parts[3], parts[4], parts[5], parts[6] || 0);
+                         } else {
+                            // Handle "DD/MM/YYYY HH:MM:S"
+                            parts = dateStr.match(/(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):(\d{1,2})/);
+                            if (parts) {
+                               date = new Date(parts[3], parseInt(parts[2], 10) - 1, parts[1], parts[4], parts[5], parts[6] || 0);
+                            } else {
+                                // Handle YYYY-MM-DD
+                                parts = dateStr.match(/(\d{4})-(\d{2})-(\d{2})/);
+                                if (parts) {
+                                    date = new Date(parts[1], parseInt(parts[2], 10) - 1, parts[3]);
+                                }
+                            }
+                         }
+                     }
+                     if (date && !isNaN(date)) {
+                         row.dateObject = date;
+                     }
+                }
             });
 
 
@@ -759,10 +813,13 @@
         function updateAllVisuals() {
             if (!getCurrentData()) return;
             updateStats();
+            renderOverviewChart();
             updateChartUI();
             updateDataInfo();
             updateMLSelects();
+            populateAnalyticsSelector();
             applyFilters();
+            updateAdvancedAnalytics();
         }
         
         // Function to get the most relevant temperature column
@@ -812,11 +869,14 @@
             const data = getCurrentData();
             const container = document.getElementById('dataInfo');
             let info = `<h4>Informace</h4><p><strong>Soubor:</strong> ${data.fileName}</p>`;
-            if (data.currentMode === 'sensor') {
-                 const validData = data.allData.filter(d => d.dateObject);
-                 if (validData.length > 0) {
-                    info += `<p><strong>Rozsah dat:</strong> ${validData[0].datum_cas} - ${validData[validData.length - 1].datum_cas}</p>`;
-                 }
+            const dateColName = data.columns.find(c => c.toLowerCase().includes('datum') || c.toLowerCase().includes('logged'));
+            if (dateColName) {
+                const dates = data.allData.map(r => r.dateObject).filter(d => d);
+                if (dates.length > 0) {
+                    const minDate = new Date(Math.min.apply(null, dates));
+                    const maxDate = new Date(Math.max.apply(null, dates));
+                    info += `<p><strong>Rozsah dat:</strong> ${minDate.toLocaleDateString('cs-CZ')} - ${maxDate.toLocaleDateString('cs-CZ')}</p>`;
+                }
             }
             container.innerHTML = info;
         }
@@ -856,19 +916,50 @@
             currentPage = 1; 
             updateTable(); 
         }
+        
+        function clearFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            applyFilters();
+        }
+        
+        function setDateRange(rangeType) {
+            const endDate = new Date();
+            let startDate = new Date();
+            if (rangeType === 'last7days') {
+                startDate.setDate(endDate.getDate() - 7);
+            } else if (rangeType === 'thisMonth') {
+                startDate.setDate(1);
+            } else if (rangeType === 'lastMonth') {
+                startDate = new Date(endDate.getFullYear(), endDate.getMonth() - 1, 1);
+                endDate = new Date(endDate.getFullYear(), endDate.getMonth(), 0);
+            }
+            
+            // Format to YYYY-MM-DD
+            document.getElementById('startDate').value = startDate.toISOString().split('T')[0];
+            document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
+            applyFilters();
+        }
+
 
         function applyFilters() {
             const data = getCurrentData();
             if (!data) return;
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            const startDate = document.getElementById('startDate').valueAsDate;
-            const endDate = document.getElementById('endDate').valueAsDate;
+            const startDateInput = document.getElementById('startDate');
+            const endDateInput = document.getElementById('endDate');
+            
+            // Fix for valueAsDate being off by one day due to timezone
+            const startDate = startDateInput.value ? new Date(startDateInput.value + 'T00:00:00') : null;
+            const endDate = endDateInput.value ? new Date(endDateInput.value + 'T23:59:59') : null;
 
             data.filteredData = data.allData.filter(row => {
                 const textMatch = Object.values(row).some(val => val && val.toString().toLowerCase().includes(searchTerm));
-                if (!startDate && !endDate) return textMatch;
                 const rowDate = row.dateObject;
+                if (!startDate && !endDate) return textMatch;
                 if (!rowDate) return false;
+                
                 const startMatch = !startDate || rowDate >= startDate;
                 const endMatch = !endDate || rowDate <= endDate;
                 return textMatch && startMatch && endMatch;
@@ -878,6 +969,110 @@
         }
         
         // --- Charting ---
+        function getChartColors() {
+            const isDarkMode = document.body.classList.contains('dark-mode');
+            return {
+                textColor: isDarkMode ? '#e0e0e0' : '#333',
+                gridColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+            };
+        }
+        
+        function handleChartClick(event, elements, chart) {
+            if (elements.length > 0) {
+                const clickedIndex = elements[0].index;
+                const clickedLabel = chart.data.labels[clickedIndex];
+                document.getElementById('searchInput').value = clickedLabel;
+                applyFilters();
+                switchTab('table');
+            }
+        }
+        
+        function renderOverviewChart() {
+            const data = getCurrentData();
+            if (!data) return;
+
+            const ctx = document.getElementById('overviewChart').getContext('2d');
+            let chartData, chartOptions, chartType;
+
+            if (data.currentMode === 'refrigeration') {
+                const tempCol = getTemperatureColumn(data);
+                const dateCol = data.columns.find(c => c.toLowerCase().includes('datum') || c.toLowerCase().includes('logged'));
+                if (!tempCol || !dateCol) return;
+                
+                chartType = 'line';
+                const plotData = data.allData.filter(r => r.dateObject);
+
+                chartData = {
+                    labels: plotData.map(r => r.dateObject),
+                    datasets: [{
+                        label: `Teplota (${tempCol})`,
+                        data: plotData.map(r => parseFloat(String(r[tempCol]).replace(',', '.'))),
+                        borderColor: 'var(--primary-color)',
+                        backgroundColor: 'rgba(0, 122, 255, 0.1)',
+                        fill: true,
+                        tension: 0.2,
+                        pointRadius: 0,
+                    }]
+                };
+                 chartOptions = {
+                    scales: {
+                        x: { 
+                            type: 'time', 
+                            time: { unit: 'day' },
+                            adapters: {
+                                date: {
+                                    locale: window.dateFnsLocaleCs
+                                }
+                            }
+                        }
+                    }
+                };
+            } else {
+                // Default chart for other data types
+                const categorical = data.categoricalColumns[0];
+                const numerical = data.numericColumns[0];
+                if (!categorical || !numerical) return;
+                
+                chartType = 'bar';
+                const aggregatedData = data.allData.reduce((acc, row) => {
+                    const category = row[categorical] || 'N/A';
+                    acc[category] = (acc[category] || 0) + parseFloat(String(row[numerical]).replace(',', '.'));
+                    return acc;
+                }, {});
+
+                chartData = {
+                    labels: Object.keys(aggregatedData),
+                    datasets: [{
+                        label: `Součet ${numerical} podle ${categorical}`,
+                        data: Object.values(aggregatedData),
+                        backgroundColor: 'var(--primary-color)',
+                    }]
+                };
+                chartOptions = {};
+            }
+
+            if (overviewChartInstance) overviewChartInstance.destroy();
+            
+            const colors = getChartColors();
+            overviewChartInstance = new Chart(ctx, {
+                type: chartType,
+                data: chartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    ...chartOptions,
+                    plugins: { legend: { labels: { color: colors.textColor } } },
+                    scales: {
+                        ...chartOptions.scales,
+                        x: { ...chartOptions.scales?.x, ticks: { color: colors.textColor }, grid: { color: colors.gridColor } },
+                        y: { ...chartOptions.scales?.y, ticks: { color: colors.textColor }, grid: { color: colors.gridColor } }
+                    },
+                    onClick: (event, elements) => handleChartClick(event, elements, overviewChartInstance)
+                }
+            });
+        }
+
+
         function updateChartUI() {
             const data = getCurrentData();
             if (!data) return;
@@ -885,6 +1080,8 @@
             const xAxisSelect = document.getElementById('xAxis');
             const yAxisSelect = document.getElementById('yAxis');
             let xOptions = '', yOptions = '';
+            
+            const dateCol = data.columns.find(c => c.toLowerCase().includes('datum') || c.toLowerCase().includes('logged'));
 
             switch(chartType) {
                 case 'pie': case 'doughnut':
@@ -895,8 +1092,10 @@
                     xOptions = data.numericColumns.map(c => `<option value="${c}">${c}</option>`).join('');
                     yOptions = data.numericColumns.map(c => `<option value="${c}">${c}</option>`).join('');
                     break;
-                default:
-                    xOptions = data.categoricalColumns.map(c => `<option value="${c}">${c}</option>`).join('');
+                default: // line, bar
+                    let allXOptions = [...data.categoricalColumns];
+                    if(dateCol) allXOptions.unshift(dateCol);
+                    xOptions = allXOptions.map(c => `<option value="${c}">${c}</option>`).join('');
                     yOptions = data.numericColumns.map(c => `<option value="${c}">${c}</option>`).join('');
             }
             xAxisSelect.innerHTML = xOptions;
@@ -921,7 +1120,92 @@
         function updateChart() {
             const data = getCurrentData();
             if (!data) return;
-            // ... rest of the charting logic using data.allData ...
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            const chartType = document.getElementById('chartType').value;
+            const xCol = document.getElementById('xAxis').value;
+            const yCol = document.getElementById('yAxis').value;
+            const showTrendline = document.getElementById('showTrendline').checked;
+
+            if (!xCol || !yCol) return;
+
+            let labels, values;
+            const chartData = data.filteredData;
+            
+            const dateColName = data.columns.find(c => c.toLowerCase().includes('datum') || c.toLowerCase().includes('logged'));
+            const isTimeSeries = xCol === dateColName;
+
+            if (['pie', 'doughnut'].includes(chartType)) {
+                const aggregated = chartData.reduce((acc, row) => {
+                    const key = row[xCol] || 'N/A';
+                    const value = parseFloat(String(row[yCol]).replace(',', '.'));
+                    if(!isNaN(value)) {
+                       acc[key] = (acc[key] || 0) + value;
+                    }
+                    return acc;
+                }, {});
+                labels = Object.keys(aggregated);
+                values = Object.values(aggregated);
+            } else if (isTimeSeries) {
+                 labels = chartData.map(r => r.dateObject).filter(Boolean);
+                 values = chartData.map(r => parseFloat(String(r[yCol]).replace(',', '.')));
+            } else {
+                labels = chartData.map(r => r[xCol]);
+                values = chartData.map(r => parseFloat(String(r[yCol]).replace(',', '.')));
+            }
+            
+            const datasets = [{
+                label: `${yCol} podle ${xCol}`,
+                data: values,
+                backgroundColor: chartType === 'line' ? 'rgba(0, 122, 255, 0.1)' : 'var(--primary-color)',
+                borderColor: 'var(--primary-color)',
+                fill: chartType === 'line',
+                tension: 0.1
+            }];
+
+            if (showTrendline && (chartType === 'line' || chartType === 'scatter')) {
+                const trendData = chartData.map((row, index) => ({
+                    x: isTimeSeries && row.dateObject ? row.dateObject.getTime() : index,
+                    y: parseFloat(String(row[yCol]).replace(',', '.'))
+                })).filter(p => p.x != null && !isNaN(p.x) && !isNaN(p.y));
+                
+                if (trendData.length > 1) {
+                    const { slope, intercept } = calculateLinearRegression(trendData);
+                    datasets.push({
+                        label: 'Trendová čára',
+                        data: trendData.map(p => ({ x: p.x, y: slope * p.x + intercept })),
+                        type: 'line',
+                        borderColor: 'var(--danger-color)',
+                        fill: false,
+                        pointRadius: 0
+                    });
+                }
+            }
+
+            if (mainChartInstance) mainChartInstance.destroy();
+            const colors = getChartColors();
+            mainChartInstance = new Chart(ctx, {
+                type: chartType,
+                data: { labels, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: (chartType !== 'pie' && chartType !== 'doughnut') ? {
+                        x: { 
+                            type: isTimeSeries ? 'time' : 'category',
+                            ticks: { color: colors.textColor }, 
+                            grid: { color: colors.gridColor },
+                            adapters: {
+                                date: {
+                                    locale: window.dateFnsLocaleCs
+                                }
+                            }
+                        },
+                        y: { ticks: { color: colors.textColor }, grid: { color: colors.gridColor } }
+                    } : {},
+                    plugins: { legend: { labels: { color: colors.textColor } } },
+                     onClick: (event, elements) => handleChartClick(event, elements, mainChartInstance)
+                }
+            });
         }
 
         // --- Specific Analysis Tabs ---
@@ -995,41 +1279,87 @@
                 options: { responsive: true, maintainAspectRatio: false }
             });
         }
+        
+        function populateAnalyticsSelector() {
+            const data = getCurrentData();
+            if (!data) return;
+            const select = document.getElementById('analyticsColumn');
+            const currentVal = select.value;
+            
+            const options = data.numericColumns.map(c => `<option value="${c}" ${c === currentVal ? 'selected' : ''}>${c}</option>`).join('');
+            select.innerHTML = options;
+        }
 
         function updateAdvancedAnalytics() {
             const data = getCurrentData();
             if (!data) return;
+            
+            populateAnalyticsSelector();
+            
             const container = document.getElementById('analyticsContent');
-            if (data.currentMode === 'refrigeration') container.innerHTML = generateRefrigerationAnalytics();
+            const selectedColumn = document.getElementById('analyticsColumn').value;
+
+            if (data.currentMode === 'refrigeration') {
+                 if(selectedColumn) {
+                    container.innerHTML = generateRefrigerationAnalytics(selectedColumn);
+                 } else {
+                    container.innerHTML = `<div class="message error">Vyberte prosím číselný sloupec pro analýzu.</div>`;
+                 }
+            }
             else if (data.currentMode === 'sensor') container.innerHTML = generateSensorAnalytics();
             else container.innerHTML = `<div style="text-align:center; padding: 40px;">Pro tento typ dat není dostupná žádná pokročilá analýza.</div>`;
         }
 
-        function generateRefrigerationAnalytics() {
+        function generateRefrigerationAnalytics(tempCol) {
             const data = getCurrentData();
-            const tempCol = getTemperatureColumn(data);
             const alarmCol = data.columns.find(c => c.toLowerCase().includes('alarm'));
             const defrostCol = data.columns.find(c => c.toLowerCase().includes('defrosting'));
             
             let tempStatsHtml = '<p>Teplotní data nebyla nalezena.</p>';
+            let timeOutOfRangeHtml = '';
+
             if (tempCol) {
-                const temps = data.allData.map(row => parseFloat(String(row[tempCol]).replace(',', '.'))).filter(t => !isNaN(t));
+                const temps = data.allData.map(row => {
+                    return {
+                        value: parseFloat(String(row[tempCol]).replace(',', '.')),
+                        date: row.dateObject
+                    }
+                }).filter(t => !isNaN(t.value) && t.date);
+                
                 if (temps.length > 0) {
                     tempStatsHtml = `
-                        <p><strong>Průměr:</strong> ${(temps.reduce((a, b) => a + b, 0) / temps.length).toFixed(2)}°C</p>
-                        <p><strong>Minimum:</strong> ${Math.min(...temps).toFixed(2)}°C</p>
-                        <p><strong>Maximum:</strong> ${Math.max(...temps).toFixed(2)}°C</p>
+                        <p><strong>Průměr:</strong> ${(temps.map(t=>t.value).reduce((a, b) => a + b, 0) / temps.length).toFixed(2)}°C</p>
+                        <p><strong>Minimum:</strong> ${Math.min(...temps.map(t=>t.value)).toFixed(2)}°C</p>
+                        <p><strong>Maximum:</strong> ${Math.max(...temps.map(t=>t.value)).toFixed(2)}°C</p>
                     `;
+
+                    // Calculate time out of range (-18°C)
+                    const safeTemp = -18;
+                    let outOfRangeMillis = 0;
+                    for(let i = 1; i < temps.length; i++) {
+                        if (temps[i-1].value > safeTemp && temps[i].value > safeTemp) {
+                            // Assuming data points are sequential and time difference is meaningful
+                            const timeDiff = temps[i].date.getTime() - temps[i-1].date.getTime();
+                            // Only add if the time difference is reasonable (e.g., less than an hour) to avoid summing across large gaps
+                            if (timeDiff < 3600000) {
+                                outOfRangeMillis += timeDiff;
+                            }
+                        }
+                    }
+                    const totalMinutes = Math.round(outOfRangeMillis / (1000 * 60));
+                    const hours = Math.floor(totalMinutes / 60);
+                    const minutes = totalMinutes % 60;
+                    timeOutOfRangeHtml = `<p><strong>Čas nad -18°C:</strong> <span style="font-weight:bold; color: var(--danger-color);">${hours}h ${minutes}m</span></p>`;
                 }
             }
 
             let stateAnalysisHtml = '';
             if (defrostCol) {
-                 const defrostingTime = data.allData.filter(r => String(r[defrostCol]).toLowerCase() === 'true').length * 5; // Assuming 5 min intervals
+                 const defrostingTime = data.allData.filter(r => String(r[defrostCol]).toLowerCase() === 'true').length * 5; // Assuming 5 min intervals, might need adjustment
                  stateAnalysisHtml += `<p><strong>Celkový čas odmrazování:</strong> ${Math.floor(defrostingTime / 60)}h ${defrostingTime % 60}m</p>`;
             }
              if (alarmCol) {
-                const totalAlarms = data.allData.filter(r => r[alarmCol] !== '0' && r[alarmCol] !== '').length;
+                const totalAlarms = data.allData.filter(r => r[alarmCol] !== '0' && r[alarmCol] !== '' && r[alarmCol] != null).length;
                 stateAnalysisHtml += `<p><strong>Počet alarmů:</strong> <span style="color: ${totalAlarms > 0 ? 'var(--danger-color)' : 'var(--success-color)'}; font-weight: bold;">${totalAlarms}</span></p>`;
             }
 
@@ -1038,6 +1368,7 @@
                     <div style="background: var(--bg-color); padding: 15px; border-radius: 8px;">
                         <h4>Teplotní statistiky (${tempCol || 'N/A'})</h4>
                         ${tempStatsHtml}
+                        ${timeOutOfRangeHtml}
                     </div>
                     <div style="background: var(--bg-color); padding: 15px; border-radius: 8px;">
                         <h4>Analýza stavů</h4>
@@ -1304,9 +1635,7 @@
                 predictionChartInstance.destroy();
             }
 
-            const isDarkMode = document.body.classList.contains('dark-mode');
-            const textColor = isDarkMode ? '#e0e0e0' : '#333';
-            const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+            const colors = getChartColors();
 
             predictionChartInstance = new Chart(ctx, {
                 type: 'line',
@@ -1333,20 +1662,20 @@
                     scales: {
                         x: {
                             type: 'linear',
-                            title: { display: true, text: 'Časový krok / Index', color: textColor },
-                            ticks: { color: textColor },
-                            grid: { color: gridColor }
+                            title: { display: true, text: 'Časový krok / Index', color: colors.textColor },
+                            ticks: { color: colors.textColor },
+                            grid: { color: colors.gridColor }
                         },
                         y: {
-                            title: { display: true, text: `Hodnota (${column})`, color: textColor },
-                            ticks: { color: textColor },
-                            grid: { color: gridColor }
+                            title: { display: true, text: `Hodnota (${column})`, color: colors.textColor },
+                            ticks: { color: colors.textColor },
+                            grid: { color: colors.gridColor }
                         }
                     },
                     plugins: {
                         legend: {
                             labels: {
-                                color: textColor
+                                color: colors.textColor
                             }
                         }
                     }
@@ -1358,6 +1687,11 @@
         document.addEventListener('DOMContentLoaded', () => {
              applySavedTheme();
              document.getElementById('uploadNewFileBtn').addEventListener('click', showUploadSection);
+             
+             new Sortable(document.getElementById('dashboardGrid'), {
+                animation: 150,
+                ghostClass: 'sortable-ghost'
+            });
         });
         window.addEventListener('error', e => showMessage(`❌ Nastala chyba: ${e.message || 'Neznámá chyba'}`, 'error'));
     </script>
