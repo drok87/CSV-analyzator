@@ -427,6 +427,10 @@
 
             <!-- Comparison -->
             <div id="comparison" class="tab-content">
+                <div class="controls">
+                    <label for="comparisonColumn">Vyberte data pro porovnání:</label>
+                    <select id="comparisonColumn" onchange="updateComparisonView()"></select>
+                </div>
                 <div id="comparisonContent"></div>
             </div>
             
@@ -653,14 +657,14 @@
         }
 
         function processData(data, index, fileName) {
-            const allData = data.filter(row => row && Object.values(row).some(val => val != null && val !== ''));
-            const columns = allData.length > 0 ? Object.keys(allData[0]) : [];
+            const allDataRaw = data.filter(row => row && Object.values(row).some(val => val != null && val !== ''));
+            const columns = allDataRaw.length > 0 ? Object.keys(allDataRaw[0]) : [];
             
             const numericColumns = [];
             const categoricalColumns = [];
-            if (allData.length > 0) {
+            if (allDataRaw.length > 0) {
                 columns.forEach(col => {
-                    const isNumeric = allData.every(row => {
+                    const isNumeric = allDataRaw.every(row => {
                         const value = String(row[col]).replace(',', '.');
                         return value === '' || value === null || !isNaN(parseFloat(value))
                     });
@@ -669,14 +673,17 @@
                 });
             }
 
-            // Convert comma decimal to dot decimal and parse dates
             const dateColName = columns.find(c => c.toLowerCase().includes('datum') || c.toLowerCase().includes('logged'));
-            allData.forEach(row => {
+            
+            const allData = allDataRaw.map(originalRow => {
+                const row = { ...originalRow };
+
                 numericColumns.forEach(col => {
                     if (typeof row[col] === 'string') {
                         row[col] = row[col].replace(',', '.');
                     }
                 });
+
                 if (dateColName && row[dateColName] && !(row.dateObject instanceof Date)) {
                      const dateStr = String(row[dateColName]);
                      let date;
@@ -684,21 +691,17 @@
                      if (row[dateColName] instanceof Date) {
                          date = row[dateColName];
                      }
-                     // Handle Excel's numeric date format
-                     else if (!isNaN(dateStr) && Number(dateStr) > 10000) { // Basic check for excel date number
+                     else if (!isNaN(dateStr) && Number(dateStr) > 10000) {
                          date = new Date(Math.round((dateStr - 25569) * 86400 * 1000));
                      } else {
-                         // Handle "YYYY-MM-DD HH:MM:SS"
                          let parts = dateStr.match(/(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{1,2})/);
                          if (parts) {
                             date = new Date(parts[1], parseInt(parts[2], 10) - 1, parts[3], parts[4], parts[5], parts[6] || 0);
                          } else {
-                            // Handle "DD/MM/YYYY HH:MM:S"
                             parts = dateStr.match(/(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):(\d{1,2})/);
                             if (parts) {
                                date = new Date(parts[3], parseInt(parts[2], 10) - 1, parts[1], parts[4], parts[5], parts[6] || 0);
                             } else {
-                                // Handle YYYY-MM-DD
                                 parts = dateStr.match(/(\d{4})-(\d{2})-(\d{2})/);
                                 if (parts) {
                                     date = new Date(parts[1], parseInt(parts[2], 10) - 1, parts[3]);
@@ -710,6 +713,7 @@
                          row.dateObject = date;
                      }
                 }
+                return row;
             });
 
 
@@ -818,6 +822,7 @@
             updateDataInfo();
             updateMLSelects();
             populateAnalyticsSelector();
+            populateComparisonSelector();
             applyFilters();
             updateAdvancedAnalytics();
         }
@@ -925,7 +930,7 @@
         }
         
         function setDateRange(rangeType) {
-            const endDate = new Date();
+            let endDate = new Date();
             let startDate = new Date();
             if (rangeType === 'last7days') {
                 startDate.setDate(endDate.getDate() - 7);
@@ -1215,69 +1220,147 @@
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
             document.getElementById(tabName).classList.add('active');
             
-            if (tabName === 'analytics') updateAdvancedAnalytics();
-            else if (tabName === 'comparison') updateComparisonView();
+            if (tabName === 'analytics') {
+                populateAnalyticsSelector();
+                updateAdvancedAnalytics();
+            } else if (tabName === 'comparison') {
+                populateComparisonSelector();
+                updateComparisonView();
+            }
         }
         
+        function getCommonNumericColumns() {
+            const loadedDatasets = datasets.filter(d => d);
+            if (loadedDatasets.length < 2) return [];
+
+            let commonColumns = [...loadedDatasets[0].numericColumns];
+
+            for (let i = 1; i < loadedDatasets.length; i++) {
+                commonColumns = commonColumns.filter(col => loadedDatasets[i].numericColumns.includes(col));
+            }
+            return commonColumns;
+        }
+
+        function populateComparisonSelector() {
+            const commonColumns = getCommonNumericColumns();
+            const select = document.getElementById('comparisonColumn');
+            const currentVal = select.value;
+
+            const options = commonColumns.map(c => `<option value="${c}" ${c === currentVal ? 'selected' : ''}>${c}</option>`).join('');
+            select.innerHTML = options;
+        }
+
         function updateComparisonView() {
             const container = document.getElementById('comparisonContent');
             const loadedDatasets = datasets.filter(d => d);
-            
-            let tableHtml = `<div class="widget"><h3>Srovnání metrik</h3><div class="table-wrapper"><table class="summary-table"><thead><tr><th>Metrika</th>`;
+            const selectedColumn = document.getElementById('comparisonColumn').value;
+
+            if (loadedDatasets.length < 2) {
+                container.innerHTML = `<div class="message error">Pro porovnání nahrajte alespoň dva soubory.</div>`;
+                return;
+            }
+
+            if (!selectedColumn) {
+                container.innerHTML = `<div class="message error">Vyberte prosím sloupec pro porovnání ze společných sloupců.</div>`;
+                return;
+            }
+
+            // --- Table Generation ---
+            let tableHtml = `<div class="widget"><h3>Srovnání metrik pro: ${selectedColumn}</h3><div class="table-wrapper"><table class="summary-table"><thead><tr><th>Metrika</th>`;
             loadedDatasets.forEach(ds => {
                 tableHtml += `<th>${ds.fileName}</th>`;
             });
             tableHtml += '</tr></thead><tbody>';
-            
-            const metrics = ['Celkem záznamů', 'Unikátních beden', 'Aktivních senzorů'];
+
+            const metrics = ['Průměr', 'Minimum', 'Maximum', 'Součet'];
             metrics.forEach(metric => {
                 tableHtml += `<tr><td><strong>${metric}</strong></td>`;
                 loadedDatasets.forEach(ds => {
-                    let value = 'N/A';
-                    if (ds.currentMode === 'sensor') {
-                        const validData = ds.allData.filter(d => (d.stateCode === '1' || d.Status === '1') && d.sensor !== '0');
-                        if (metric === 'Celkem záznamů') value = validData.length;
-                        if (metric === 'Unikátních beden') value = new Set(validData.map(d => d.EAN)).size;
-                        if (metric === 'Aktivních senzorů') value = new Set(validData.map(d => d.sensor)).size;
-                    } else {
-                        if (metric === 'Celkem záznamů') value = ds.allData.length;
+                    const values = ds.allData.map(row => parseFloat(row[selectedColumn])).filter(v => !isNaN(v));
+                    let result = 'N/A';
+                    if (values.length > 0) {
+                        switch (metric) {
+                            case 'Průměr':
+                                result = (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2);
+                                break;
+                            case 'Minimum':
+                                result = Math.min(...values).toFixed(2);
+                                break;
+                            case 'Maximum':
+                                result = Math.max(...values).toFixed(2);
+                                break;
+                            case 'Součet':
+                                result = values.reduce((a, b) => a + b, 0).toFixed(2);
+                                break;
+                        }
                     }
-                    tableHtml += `<td>${value}</td>`;
+                    tableHtml += `<td>${result}</td>`;
                 });
                 tableHtml += '</tr>';
             });
             tableHtml += '</tbody></table></div></div>';
 
-            let chartHtml = `<div class="widget" style="margin-top:20px;"><h3>Porovnání vytíženosti</h3><div class="chart-container" style="height: 400px;"><canvas id="comparisonChart"></canvas></div></div>`;
+            // --- Chart Generation ---
+            let chartHtml = `<div class="widget" style="margin-top:20px;"><h3>Porovnání v čase: ${selectedColumn}</h3><div class="chart-container" style="height: 400px;"><canvas id="comparisonChart"></canvas></div></div>`;
             container.innerHTML = tableHtml + chartHtml;
 
-            // Render comparison chart
             const chartCtx = document.getElementById('comparisonChart').getContext('2d');
             const colors = ['#007AFF', '#34C759', '#FF9500'];
-            const chartDatasets = loadedDatasets.map((ds, index) => {
-                const hourlyData = {};
-                ds.allData.forEach(d => {
-                    if (d.hour !== undefined) hourlyData[d.hour] = (hourlyData[d.hour] || 0) + 1;
-                });
-                return {
-                    label: ds.fileName,
-                    data: Array.from({length: 24}, (_, i) => hourlyData[i] || 0),
-                    borderColor: colors[index],
-                    backgroundColor: colors[index] + '33',
-                    fill: true,
-                    tension: 0.2
-                };
-            });
             
-            if(comparisonChartInstance) comparisonChartInstance.destroy();
-            comparisonChartInstance = new Chart(chartCtx, {
-                type: 'line',
-                data: {
-                    labels: Array.from({length: 24}, (_, i) => `${String(i).padStart(2,'0')}:00`),
-                    datasets: chartDatasets
-                },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
+            const chartDatasets = loadedDatasets.map((ds, index) => {
+                const dateCol = ds.columns.find(c => c.toLowerCase().includes('datum') || c.toLowerCase().includes('logged'));
+                if (!dateCol) return null; // Skip datasets without a date column for this chart
+
+                const dataPoints = ds.allData
+                    .filter(row => row.dateObject && row[selectedColumn] != null)
+                    .map(row => ({
+                        x: row.dateObject,
+                        y: parseFloat(row[selectedColumn])
+                    }));
+
+                return {
+                    label: `${ds.fileName}`,
+                    data: dataPoints,
+                    borderColor: colors[index % colors.length],
+                    backgroundColor: colors[index % colors.length] + '33',
+                    fill: false,
+                    tension: 0.2,
+                    pointRadius: 2
+                };
+            }).filter(Boolean); // Remove null datasets
+
+            if (comparisonChartInstance) comparisonChartInstance.destroy();
+            
+            if (chartDatasets.length > 0) {
+                const chartColors = getChartColors();
+                comparisonChartInstance = new Chart(chartCtx, {
+                    type: 'line',
+                    data: {
+                        datasets: chartDatasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: { unit: 'day' },
+                                adapters: { date: { locale: window.dateFnsLocaleCs } },
+                                ticks: { color: chartColors.textColor },
+                                grid: { color: chartColors.gridColor }
+                            },
+                            y: {
+                                ticks: { color: chartColors.textColor },
+                                grid: { color: chartColors.gridColor }
+                            }
+                        },
+                        plugins: { legend: { labels: { color: chartColors.textColor } } }
+                    }
+                });
+            } else {
+                 // If no datasets have date info, clear the chart area
+                 document.getElementById('comparisonChart').parentElement.innerHTML = '<p style="text-align:center; padding: 20px;">Pro vytvoření časového grafu je potřeba datový sloupec s datem ve všech souborech.</p>';
+            }
         }
         
         function populateAnalyticsSelector() {
