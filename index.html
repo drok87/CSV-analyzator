@@ -601,7 +601,7 @@
                         }
 
                         const data = [];
-                        const dateColIndex = columns.findIndex(c => c.toLowerCase().includes('datum'));
+                        const dateColIndex = columns.findIndex(c => c.toLowerCase().includes('datum') || c.toLowerCase().includes('logged'));
                         for (let i = dataStartIndex; i < lines.length; i++) {
                             const values = lines[i].split(separator).map(v => v.trim().replace(/^"|"$/g, ''));
                             if (values.length >= columns.length) {
@@ -609,8 +609,15 @@
                                 columns.forEach((col, idx) => { row[col] = values[idx] || ''; });
                                 if (dateColIndex !== -1) {
                                     const dateStr = values[dateColIndex];
-                                    const parts = dateStr.match(/(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):(\d{2})/);
-                                    if(parts) row['dateObject'] = new Date(parts[3], parts[2] - 1, parts[1], parts[4], parts[5], parts[6]);
+                                    // Try parsing YYYY-MM-DD format
+                                    let parts = dateStr.match(/(\d{4})-(\d{2})-(\d{2})/);
+                                    if(parts) {
+                                        row['dateObject'] = new Date(parts[1], parts[2] - 1, parts[3]);
+                                    } else {
+                                        // Try parsing DD/MM/YYYY HH:MM:SS format
+                                        parts = dateStr.match(/(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):(\d{2})/);
+                                        if(parts) row['dateObject'] = new Date(parts[3], parts[2] - 1, parts[1], parts[4], parts[5], parts[6]);
+                                    }
                                 }
                                 data.push(row);
                             }
@@ -633,11 +640,24 @@
             const categoricalColumns = [];
             if (allData.length > 0) {
                 columns.forEach(col => {
-                    const isNumeric = allData.every(row => row[col] === '' || row[col] === null || !isNaN(parseFloat(row[col])));
-                    if (isNumeric) numericColumns.push(col);
+                    const isNumeric = allData.every(row => {
+                        const value = String(row[col]).replace(',', '.');
+                        return value === '' || value === null || !isNaN(parseFloat(value))
+                    });
+                    if (isNumeric && col !== 'Alarms') numericColumns.push(col);
                     else categoricalColumns.push(col);
                 });
             }
+
+            // Convert comma decimal to dot decimal for numeric columns
+            allData.forEach(row => {
+                numericColumns.forEach(col => {
+                    if (typeof row[col] === 'string') {
+                        row[col] = row[col].replace(',', '.');
+                    }
+                });
+            });
+
 
             datasets[index] = {
                 allData,
@@ -660,8 +680,8 @@
 
         function detectDataType(data, cols) {
             if (!data || data.length === 0) return { type: 'general' };
-            const refrigerationCols = ['°C', 'Chlazení', 'Odtávání', 'Alarm'];
-            if (cols.reduce((s, c) => s + (refrigerationCols.some(rc => c.includes(rc)) ? 1 : 0), 0) >= 3) return { type: 'refrigeration' };
+            const refrigerationCols = ['°C', 'Defrosting', 'Alarm'];
+            if (cols.reduce((s, c) => s + (refrigerationCols.some(rc => c.includes(rc)) ? 1 : 0), 0) >= 2) return { type: 'refrigeration' };
             const sensorCols = ['timestamp', 'hour', 'sensor', 'EAN'];
             if (cols.reduce((s, c) => s + (sensorCols.includes(c) ? 1 : 0), 0) >= 3) return { type: 'sensor' };
             return { type: 'general' };
@@ -744,18 +764,39 @@
             updateMLSelects();
             applyFilters();
         }
+        
+        // Function to get the most relevant temperature column
+        function getTemperatureColumn(data) {
+            const preferredColumns = ['Return [°C]', 'Supply [°C]'];
+            for (const pCol of preferredColumns) {
+                const foundCol = data.columns.find(c => c.trim() === pCol);
+                if (foundCol) return foundCol;
+            }
+            // Fallback to the first column with °C if preferred are not found
+            return data.columns.find(c => c.includes('°C'));
+        }
 
         function updateStats() {
             const data = getCurrentData();
+            if (!data) return;
             const statsGrid = document.getElementById('statsGrid');
+            statsGrid.innerHTML = ''; // Clear previous stats
             let stats = [];
+
             if (data.currentMode === 'refrigeration') {
-                const tempCol = data.columns.find(c => c.includes('°C'));
-                const temps = data.allData.map(row => parseFloat(row[tempCol])).filter(t => !isNaN(t));
-                stats.push({ title: `${(temps.reduce((a, b) => a + b, 0) / temps.length).toFixed(1)}°C`, subtitle: 'Prům. teplota' });
-                stats.push({ title: `${Math.min(...temps).toFixed(1)}°C`, subtitle: 'Min. teplota' });
-                stats.push({ title: `${Math.max(...temps).toFixed(1)}°C`, subtitle: 'Max. teplota' });
-                stats.push({ title: data.allData.filter(r => r[data.columns.find(c => c.toLowerCase().includes('chlazení'))] === 'Aktivní').length, subtitle: 'Chladící cykly' });
+                const tempCol = getTemperatureColumn(data);
+                if (tempCol) {
+                    const temps = data.allData.map(row => parseFloat(String(row[tempCol]).replace(',', '.'))).filter(t => !isNaN(t));
+                    if (temps.length > 0) {
+                        stats.push({ title: `${(temps.reduce((a, b) => a + b, 0) / temps.length).toFixed(1)}°C`, subtitle: 'Prům. teplota' });
+                        stats.push({ title: `${Math.min(...temps).toFixed(1)}°C`, subtitle: 'Min. teplota' });
+                        stats.push({ title: `${Math.max(...temps).toFixed(1)}°C`, subtitle: 'Max. teplota' });
+                    }
+                }
+                const defrostCol = data.columns.find(c => c.toLowerCase().includes('defrosting'));
+                if (defrostCol) {
+                     stats.push({ title: data.allData.filter(r => String(r[defrostCol]).toLowerCase() === 'true').length, subtitle: 'Odmrazovací cykly' });
+                }
             } else if (data.currentMode === 'sensor') {
                 const validData = data.allData.filter(d => (d.stateCode === '1' || d.Status === '1') && d.sensor !== '0');
                 stats.push({ title: new Set(validData.map(d => d.EAN)).size.toLocaleString(), subtitle: 'Unikátních beden' });
@@ -959,32 +1000,48 @@
             const data = getCurrentData();
             if (!data) return;
             const container = document.getElementById('analyticsContent');
-            if (data.currentMode === 'sensor') container.innerHTML = generateSensorAnalytics();
-            else if (data.currentMode === 'refrigeration') container.innerHTML = generateRefrigerationAnalytics();
+            if (data.currentMode === 'refrigeration') container.innerHTML = generateRefrigerationAnalytics();
+            else if (data.currentMode === 'sensor') container.innerHTML = generateSensorAnalytics();
             else container.innerHTML = `<div style="text-align:center; padding: 40px;">Pro tento typ dat není dostupná žádná pokročilá analýza.</div>`;
         }
 
         function generateRefrigerationAnalytics() {
             const data = getCurrentData();
-            const tempCol = data.columns.find(c => c.includes('°C'));
+            const tempCol = getTemperatureColumn(data);
             const alarmCol = data.columns.find(c => c.toLowerCase().includes('alarm'));
-            const coolingCol = data.columns.find(c => c.toLowerCase().includes('chlazení'));
-            const temps = data.allData.map(row => parseFloat(row[tempCol])).filter(t => !isNaN(t));
-            const totalAlarms = data.allData.filter(r => r[alarmCol] === 'Aktivní').length;
-            const coolingTime = data.allData.filter(r => r[coolingCol] === 'Aktivní').length * 5;
+            const defrostCol = data.columns.find(c => c.toLowerCase().includes('defrosting'));
+            
+            let tempStatsHtml = '<p>Teplotní data nebyla nalezena.</p>';
+            if (tempCol) {
+                const temps = data.allData.map(row => parseFloat(String(row[tempCol]).replace(',', '.'))).filter(t => !isNaN(t));
+                if (temps.length > 0) {
+                    tempStatsHtml = `
+                        <p><strong>Průměr:</strong> ${(temps.reduce((a, b) => a + b, 0) / temps.length).toFixed(2)}°C</p>
+                        <p><strong>Minimum:</strong> ${Math.min(...temps).toFixed(2)}°C</p>
+                        <p><strong>Maximum:</strong> ${Math.max(...temps).toFixed(2)}°C</p>
+                    `;
+                }
+            }
+
+            let stateAnalysisHtml = '';
+            if (defrostCol) {
+                 const defrostingTime = data.allData.filter(r => String(r[defrostCol]).toLowerCase() === 'true').length * 5; // Assuming 5 min intervals
+                 stateAnalysisHtml += `<p><strong>Celkový čas odmrazování:</strong> ${Math.floor(defrostingTime / 60)}h ${defrostingTime % 60}m</p>`;
+            }
+             if (alarmCol) {
+                const totalAlarms = data.allData.filter(r => r[alarmCol] !== '0' && r[alarmCol] !== '').length;
+                stateAnalysisHtml += `<p><strong>Počet alarmů:</strong> <span style="color: ${totalAlarms > 0 ? 'var(--danger-color)' : 'var(--success-color)'}; font-weight: bold;">${totalAlarms}</span></p>`;
+            }
 
             return `<div class="widget"><h3>🌡️ Analýza chladírny: ${data.fileName}</h3>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
                     <div style="background: var(--bg-color); padding: 15px; border-radius: 8px;">
-                        <h4>Teplotní statistiky</h4>
-                        <p><strong>Průměr:</strong> ${(temps.reduce((a, b) => a + b, 0) / temps.length).toFixed(2)}°C</p>
-                        <p><strong>Minimum:</strong> ${Math.min(...temps).toFixed(2)}°C</p>
-                        <p><strong>Maximum:</strong> ${Math.max(...temps).toFixed(2)}°C</p>
+                        <h4>Teplotní statistiky (${tempCol || 'N/A'})</h4>
+                        ${tempStatsHtml}
                     </div>
                     <div style="background: var(--bg-color); padding: 15px; border-radius: 8px;">
                         <h4>Analýza stavů</h4>
-                        <p><strong>Celkový čas chlazení:</strong> ${Math.floor(coolingTime / 60)}h ${coolingTime % 60}m</p>
-                        <p><strong>Počet alarmů:</strong> <span style="color: ${totalAlarms > 0 ? '#dc3545' : '#28a745'}; font-weight: bold;">${totalAlarms}</span></p>
+                        ${stateAnalysisHtml}
                     </div>
                 </div>
             </div>`;
