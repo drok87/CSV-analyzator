@@ -654,6 +654,11 @@
                 filterDebounceTimer = setTimeout(() => func.apply(this, args), delay);
             };
         }
+        
+        // Helper to get computed CSS variables
+        function getCssVariable(variable) {
+            return getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
+        }
 
         // Validate data helper
         function validateData(data, fileName) {
@@ -692,8 +697,11 @@
             const theme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
             localStorage.setItem('theme', theme);
             document.querySelector('.theme-switcher').textContent = theme === 'dark' ? '☀️' : '🌙';
-            if (mainChartInstance) updateChart();
-            if (overviewChartInstance) renderOverviewChart();
+            // We need a slight delay for the CSS variables to update before redrawing charts
+            setTimeout(() => {
+                if (mainChartInstance) updateChart();
+                if (overviewChartInstance) renderOverviewChart();
+            }, 50);
         }
 
         function applySavedTheme() {
@@ -1257,8 +1265,8 @@
                     datasets: [{
                         label: `Teplota (${tempCol})`,
                         data: plotData.map(r => parseFloat(String(r[tempCol]).replace(',', '.'))),
-                        borderColor: 'var(--primary-color)',
-                        backgroundColor: 'rgba(0, 122, 255, 0.1)',
+                        borderColor: getCssVariable('--primary-color'),
+                        backgroundColor: getCssVariable('--primary-color') + '20', // Add transparency
                         fill: true,
                         tension: 0.2,
                         pointRadius: 0,
@@ -1282,7 +1290,7 @@
                     datasets: [{
                         label: `Součet ${numerical} podle ${categorical}`,
                         data: Object.values(aggregatedData),
-                        backgroundColor: 'var(--primary-color)',
+                        backgroundColor: getCssVariable('--primary-color'),
                     }]
                 };
                 chartOptions = {};
@@ -1410,8 +1418,8 @@
             const datasets = [{
                 label: `${yCol} podle ${xCol}`,
                 data: values,
-                backgroundColor: chartType === 'line' ? 'rgba(0, 122, 255, 0.1)' : 'var(--primary-color)',
-                borderColor: 'var(--primary-color)',
+                backgroundColor: chartType === 'line' ? getCssVariable('--primary-color') + '20' : getCssVariable('--primary-color'),
+                borderColor: getCssVariable('--primary-color'),
                 fill: chartType === 'line',
                 tension: 0.1
             }];
@@ -1428,7 +1436,7 @@
                         label: 'Trendová čára',
                         data: trendData.map(p => ({ x: p.x, y: slope * p.x + intercept })),
                         type: 'line',
-                        borderColor: 'var(--danger-color)',
+                        borderColor: getCssVariable('--danger-color'),
                         fill: false,
                         pointRadius: 0
                     });
@@ -1541,7 +1549,11 @@
             container.innerHTML = tableHtml + chartHtml;
 
             const chartCtx = document.getElementById('comparisonChart').getContext('2d');
-            const colors = ['#007AFF', '#34C759', '#FF9500'];
+            const colors = [
+                getCssVariable('--color-overview'),
+                getCssVariable('--color-table'),
+                getCssVariable('--color-charts')
+            ];
             
             const chartDatasets = loadedDatasets.map((ds, index) => {
                 const dateCol = ds.columns.find(c => c.toLowerCase().includes('datum') || c.toLowerCase().includes('logged'));
