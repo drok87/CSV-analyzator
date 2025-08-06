@@ -6,8 +6,6 @@
     <title>Interaktivní Data Analyzátor s ML</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
-    <!-- Opraveno: Použití správného souboru pro prohlížeč (cdn.js) -->
-    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/locale/cs/cdn.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -28,6 +26,15 @@
             --border-color: #e5e5ea;
             --shadow-color: rgba(0,0,0,0.05);
             --radius: 12px;
+
+            /* Color Palette for Tabs */
+            --color-overview: #007AFF;
+            --color-table: #34C759;
+            --color-charts: #FF9500;
+            --color-comparison: #AF52DE;
+            --color-analytics: #5AC8FA;
+            --color-tools: #5856D6;
+            --color-export: #8E8E93;
         }
 
         .dark-mode {
@@ -44,6 +51,15 @@
             --success-color: #30D158;
             --border-color: #38383a;
             --shadow-color: rgba(0,0,0,0.2);
+            
+            /* Dark Mode Colors */
+            --color-overview: #0A84FF;
+            --color-table: #30D158;
+            --color-charts: #FF9F0A;
+            --color-comparison: #BF5AF2;
+            --color-analytics: #64D2FF;
+            --color-tools: #5E5CE6;
+            --color-export: #98989D;
         }
 
         * {
@@ -97,11 +113,26 @@
             cursor: pointer;
             font-size: 1.5em;
         }
+        
+        .help-icon {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            cursor: pointer;
+            font-size: 1.5em;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background-color: var(--tab-bg);
+        }
 
         #uploadNewFileBtn {
             position: absolute;
             top: 20px;
-            right: 20px;
+            right: 70px;
             background: var(--primary-color);
             border: none;
             color: white;
@@ -171,10 +202,29 @@
             min-width: 100px;
         }
         .tab.active {
-            background: var(--tab-active-bg);
+            color: white;
             box-shadow: 0 2px 8px var(--shadow-color);
         }
         .tab[style*="display: none"] { display: none !important; }
+
+        /* Tab Color Implementation */
+        .tab.active[data-color="overview"] { background-color: var(--color-overview); }
+        .tab.active[data-color="table"] { background-color: var(--color-table); }
+        .tab.active[data-color="charts"] { background-color: var(--color-charts); }
+        .tab.active[data-color="comparison"] { background-color: var(--color-comparison); }
+        .tab.active[data-color="analytics"] { background-color: var(--color-analytics); }
+        .tab.active[data-color="tools"] { background-color: var(--color-tools); }
+        .tab.active[data-color="export"] { background-color: var(--color-export); }
+
+        /* Widget Header Color Implementation */
+        #overview .widget h3 { color: var(--color-overview); }
+        #table .widget h3 { color: var(--color-table); }
+        #charts .widget h3 { color: var(--color-charts); }
+        #comparison .widget h3 { color: var(--color-comparison); }
+        #analytics .widget h3 { color: var(--color-analytics); }
+        #tools .widget h3, #tools .tool-section h4 { color: var(--color-tools); }
+        #export .widget h3 { color: var(--color-export); }
+
 
         .tab-content { display: none; }
         .tab-content.active { display: block; }
@@ -272,14 +322,14 @@
         .direction-OUT { background: var(--danger-color); color: white; }
         .direction-NA { background: var(--secondary-text-color); color: white; }
         
-        .ml-section {
+        .tool-section {
             border: 1px solid var(--border-color);
             border-radius: var(--radius);
             margin-bottom: 25px;
             padding: 20px;
         }
-        .ml-section h4 { font-size: 1.2em; color: var(--primary-color); margin-bottom: 10px; }
-        .ml-section p { font-size: 0.95em; line-height: 1.6; }
+        .tool-section h4 { font-size: 1.2em; margin-bottom: 10px; }
+        .tool-section p { font-size: 0.95em; line-height: 1.6; }
         
         .bar-viz {
             height: 10px;
@@ -298,6 +348,58 @@
         #widget-main-chart .chart-container {
             height: 300px;
         }
+        
+        .correlation-matrix { width: 100%; border-collapse: collapse; }
+        .correlation-matrix th, .correlation-matrix td { border: 1px solid var(--border-color); padding: 8px; text-align: center; font-size: 12px; }
+        .correlation-matrix th { background: var(--tab-bg); font-weight: bold; }
+        .correlation-matrix td { color: white; font-weight: bold; }
+        
+        /* Help Modal Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background-color: var(--container-bg);
+            margin: auto;
+            padding: 30px;
+            border: 1px solid var(--border-color);
+            width: 90%;
+            max-width: 800px;
+            border-radius: var(--radius);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            position: relative;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-close {
+            color: var(--secondary-text-color);
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .modal-content h3 {
+            margin-top: 20px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 5px;
+        }
+        .modal-content p {
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
 
         @media (max-width: 768px) {
             body { padding: 5px; }
@@ -306,9 +408,29 @@
             .header h1 { font-size: 1.5em; }
             #uploadNewFileBtn { position: static; margin-top: 15px; display: block; width: 100%; }
             .theme-switcher { top: 15px; left: 15px; }
+            .help-icon { top: 15px; right: 15px; }
             .controls { flex-direction: column; align-items: stretch; }
+            .controls input, .controls select, .controls button { width: 100%; }
+            .controls label { display: flex; justify-content: space-between; width: 100%; }
             .dashboard-grid { grid-template-columns: 1fr; }
             .upload-grid { grid-template-columns: 1fr; }
+            .tabs { gap: 5px; }
+            .tab { min-width: auto; padding: 8px 5px; font-size: 0.9em; }
+            .stat-card { padding: 15px; }
+            .stat-number { font-size: 1.5em; }
+            .table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            table { min-width: 500px; }
+            #dataset-selector select { width: 100%; margin-top: 10px; }
+            .pagination { flex-wrap: wrap; }
+            button, .tab, .upload-zone { min-height: 44px; }
+            .chart-container { height: 40vh; }
+            
+            @media (max-width: 480px) {
+                .tab span { display: none; }
+                .tab::before { content: attr(data-icon); }
+                .tool-section { padding: 15px; }
+                .widget { padding: 15px; }
+            }
         }
     </style>
 </head>
@@ -322,6 +444,7 @@
                 <select onchange="selectDataset(this.value)"></select>
             </div>
             <button id="uploadNewFileBtn" style="display: none;" onclick="showUploadSection()">Nahrát další soubory</button>
+            <div class="help-icon" onclick="showHelp()">❓</div>
         </div>
 
         <div class="upload-section" id="uploadSection">
@@ -358,13 +481,13 @@
 
         <div class="data-section" id="dataSection">
             <div class="tabs">
-                <div class="tab active" onclick="switchTab('overview')">📋 Přehled</div>
-                <div class="tab" onclick="switchTab('table')">📊 Tabulka</div>
-                <div class="tab" onclick="switchTab('charts')">📈 Grafy</div>
-                <div class="tab" id="comparisonTab" style="display: none;" onclick="switchTab('comparison')">⚖️ Porovnání</div>
-                <div class="tab" onclick="switchTab('analytics')">🔍 Pokročilé analýzy</div>
-                <div class="tab" onclick="switchTab('ml')">🤖 Machine Learning</div>
-                <div class="tab" onclick="switchTab('export')">💾 Export</div>
+                <div class="tab active" data-color="overview" onclick="switchTab('overview')">📋 Přehled</div>
+                <div class="tab" data-color="table" onclick="switchTab('table')">📊 Tabulka</div>
+                <div class="tab" data-color="charts" onclick="switchTab('charts')">📈 Grafy</div>
+                <div class="tab" data-color="comparison" id="comparisonTab" style="display: none;" onclick="switchTab('comparison')">⚖️ Porovnání</div>
+                <div class="tab" data-color="analytics" onclick="switchTab('analytics')">🔍 Pokročilé analýzy</div>
+                <div class="tab" data-color="tools" onclick="switchTab('tools')">🛠️ Nástroje</div>
+                <div class="tab" data-color="export" onclick="switchTab('export')">💾 Export</div>
             </div>
 
             <!-- Overview -->
@@ -390,10 +513,10 @@
             <!-- Table -->
             <div id="table" class="tab-content">
                 <div class="controls">
-                    <input type="text" id="searchInput" placeholder="🔍 Hledat..." onkeyup="applyFilters()">
+                    <input type="text" id="searchInput" placeholder="🔍 Hledat..." onkeyup="debouncedApplyFilters()">
                     <select id="itemsPerPage" onchange="changeItemsPerPage()"><option value="25">25</option><option value="50">50</option><option value="100">100</option><option value="500">500</option></select>
-                    <input type="date" id="startDate" onchange="applyFilters()">
-                    <input type="date" id="endDate" onchange="applyFilters()">
+                    <input type="date" id="startDate" onchange="debouncedApplyFilters()">
+                    <input type="date" id="endDate" onchange="debouncedApplyFilters()">
                     <button class="btn-danger" onclick="clearFilters()">Vyčistit filtry</button>
                 </div>
                  <div class="controls sub-controls">
@@ -443,31 +566,29 @@
                 <div id="analyticsContent"></div>
             </div>
             
-            <!-- Machine Learning -->
-            <div id="ml" class="tab-content">
+            <!-- Tools -->
+            <div id="tools" class="tab-content">
                 <div class="widget">
-                    <h3>🤖 Machine Learning Analýzy</h3>
-                    <p>Tato sekce nabízí pokročilé analýzy s využitím modelů strojového učení.</p>
+                    <h3>🛠️ Analytické nástroje</h3>
+                    <p>Vytvořte si vlastní sloupce nebo prozkoumejte vztahy mezi daty.</p>
                 </div>
-                <div id="ml-content">
-                    <div class="ml-section">
-                        <h4>📈 Predikce trendů</h4>
-                        <p>Na základě historických dat v časové řadě model předpoví budoucí vývoj.</p>
+                <div id="tools-content">
+                    <div class="tool-section">
+                        <h4>🧮 Počítané sloupce</h4>
+                        <p>Vytvořte nový sloupec pomocí vzorce. Použijte názvy sloupců v hranatých závorkách, např. <code>[Cena] * [Množství]</code>.</p>
                         <div class="controls">
-                            <select id="predictionColumn"><option>Vyberte sloupec...</option></select>
-                            <input type="number" value="10" min="1">
-                            <button onclick="predictTrend()">Spustit predikci</button>
+                            <input type="text" id="newColumnName" placeholder="Název nového sloupce">
+                            <input type="text" id="newColumnFormula" placeholder="Vzorec, např. [Sloupec1] + [Sloupec2]">
+                            <button onclick="createCalculatedColumn()">Vytvořit sloupec</button>
                         </div>
-                        <div id="predictionResult" class="chart-container" style="display:none; height: 300px; margin-top: 15px;"></div>
                     </div>
-                    <div class="ml-section">
-                        <h4>⚠️ Detekce anomálií</h4>
-                        <p>Model prohledá data a identifikuje neobvyklé hodnoty (outliery) pomocí statistické metody IQR.</p>
+                    <div class="tool-section">
+                        <h4>🔗 Korelační matice</h4>
+                        <p>Zjistěte, jak silně spolu souvisí jednotlivé číselné sloupce. Hodnoty blízko 1 (zelená) značí silnou pozitivní korelaci, hodnoty blízko -1 (červená) silnou negativní korelaci.</p>
                          <div class="controls">
-                            <select id="anomalyColumn"><option>Vyberte sloupec...</option></select>
-                            <button onclick="findAnomalies()">Najít anomálie</button>
+                            <button onclick="generateCorrelationMatrix()">Vygenerovat matici</button>
                          </div>
-                        <div id="anomalyResults"></div>
+                        <div id="correlationMatrixContainer" class="table-wrapper" style="overflow-x: auto;"></div>
                     </div>
                 </div>
             </div>
@@ -484,12 +605,86 @@
             </div>
         </div>
     </div>
+    
+    <!-- Help Modal -->
+    <div id="helpModal" class="modal-overlay" onclick="hideHelp()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="modal-close" onclick="hideHelp()">&times;</span>
+            <h2>Nápověda k aplikaci</h2>
+            
+            <h3>📋 Přehled</h3>
+            <p>Tato sekce poskytuje rychlý pohled na vaše data. Zobrazuje klíčové metriky (jako průměr, minimum, maximum) automaticky vybrané z nejdůležitějších sloupců a základní graf pro rychlou vizualizaci.</p>
+            
+            <h3>📊 Tabulka</h3>
+            <p>Zde si můžete prohlížet vaše data v tabulkové formě. Můžete vyhledávat, filtrovat podle data a měnit počet zobrazených položek na stránku.</p>
+            
+            <h3>📈 Grafy</h3>
+            <p>Vytvořte si vlastní grafy. Vyberte si typ grafu (sloupcový, čárový, koláčový...), zvolte data pro osu X a Y a vizualizujte si vztahy ve vašich datech. U čárových a bodových grafů můžete zapnout i zobrazení trendové čáry.</p>
+            
+            <h3>⚖️ Porovnání</h3>
+            <p>Pokud nahrajete více souborů (až 3), v této sekci je můžete porovnat. Vyberte společný číselný sloupec a aplikace vám ukáže srovnávací tabulku a graf.</p>
+
+            <h3>🔍 Pokročilé analýzy</h3>
+            <p>Tato sekce nabízí specifické analýzy pro rozpoznané typy dat (např. data z chladírenských zařízení nebo senzorů). Zobrazí vám podrobnější statistiky a doporučení.</p>
+            
+            <h3>🛠️ Nástroje</h3>
+            <p><strong>Počítané sloupce:</strong> Vytvořte si vlastní datový sloupec pomocí matematického vzorce. Například pokud máte sloupce [Cena] a [Počet], můžete vytvořit sloupec 'Tržba' se vzorcem <code>[Cena] * [Počet]</code>.</p>
+            <p><strong>Korelační matice:</strong> Tento nástroj vám ukáže, jak jsou na sobě závislé jednotlivé číselné sloupce. Zelená barva značí silnou přímou úměru, červená silnou nepřímou úměru.</p>
+
+            <h3>💾 Export</h3>
+            <p>Stáhněte si aktuálně zobrazená (vyfiltrovaná) data ve formátu CSV nebo JSON. Můžete také exportovat úvodní přehled do PDF souboru.</p>
+        </div>
+    </div>
 
     <script>
         // Global variables
         let datasets = [null, null, null];
         let selectedDatasetIndex = 0;
         let currentPage = 1, itemsPerPage = 50, mainChartInstance = null, overviewChartInstance = null, predictionChartInstance = null, comparisonChartInstance = null;
+        let filterDebounceTimer = null;
+        let chartDebounceTimer = null;
+
+        // Set Chart.js to Czech locale
+        Chart.defaults.locale = 'cs-CZ';
+
+        // Debounce helper function
+        function debounce(func, delay) {
+            return function(...args) {
+                clearTimeout(filterDebounceTimer);
+                filterDebounceTimer = setTimeout(() => func.apply(this, args), delay);
+            };
+        }
+
+        // Validate data helper
+        function validateData(data, fileName) {
+            const errors = [];
+            
+            if (!data || !Array.isArray(data)) {
+                errors.push('Data nejsou ve správném formátu');
+            } else if (data.length === 0) {
+                errors.push('Soubor neobsahuje žádná data');
+            } else if (data.length > 100000) {
+                errors.push(`Soubor obsahuje příliš mnoho řádků (${data.length}). Maximum je 100 000`);
+            } else {
+                // Check if all rows have the same structure
+                const firstRowKeys = Object.keys(data[0]);
+                const inconsistentRows = data.filter((row, index) => {
+                    const rowKeys = Object.keys(row);
+                    return rowKeys.length !== firstRowKeys.length;
+                });
+                
+                if (inconsistentRows.length > data.length * 0.1) {
+                    errors.push('Více než 10% řádků má nekonzistentní strukturu');
+                }
+                
+                // Check for minimum columns
+                if (firstRowKeys.length < 2) {
+                    errors.push('Data musí obsahovat alespoň 2 sloupce');
+                }
+            }
+            
+            return errors;
+        }
 
         // --- Theme Manager ---
         function toggleTheme() {
@@ -524,7 +719,11 @@
             setTimeout(() => { if (div.parentNode) div.parentNode.removeChild(div); }, 5000);
         }
 
-        function showLoading() { document.getElementById('loading').style.display = 'block'; }
+        function showLoading(message = 'Zpracovávám data...') { 
+            const loadingDiv = document.getElementById('loading');
+            loadingDiv.style.display = 'block';
+            loadingDiv.querySelector('p').textContent = message;
+        }
         function hideLoading() { document.getElementById('loading').style.display = 'none'; }
 
         function showUploadSection() {
@@ -537,6 +736,15 @@
             document.getElementById('dataSection').classList.add('active');
             updateUIafterFileLoad();
         }
+        
+        // --- Help Modal Functions ---
+        function showHelp() {
+            document.getElementById('helpModal').style.display = 'flex';
+        }
+        
+        function hideHelp() {
+            document.getElementById('helpModal').style.display = 'none';
+        }
 
         function formatHourRange(hour) {
             const startHour = String(hour).padStart(2, '0');
@@ -548,6 +756,12 @@
         function handleFile(event, index) {
             const file = event.target.files[0];
             if (!file) return;
+            
+            if (file.size > 50 * 1024 * 1024) { // 50MB limit
+                if (!confirm('Soubor je větší než 50MB. Zpracování může trvat déle. Pokračovat?')) {
+                    return;
+                }
+            }
             
             const uploadZone = document.querySelector(`.upload-zone[data-index="${index}"]`);
             uploadZone.classList.add('loaded');
@@ -635,6 +849,7 @@
                         } else {
                             fileTitle = '';
                             columns = lines[0].split(separator).map(col => col.trim().replace(/"/g, ''));
+                            dataStartIndex = 1;
                         }
 
                         const data = [];
@@ -657,83 +872,111 @@
         }
 
         function processData(data, index, fileName) {
-            const allDataRaw = data.filter(row => row && Object.values(row).some(val => val != null && val !== ''));
-            const columns = allDataRaw.length > 0 ? Object.keys(allDataRaw[0]) : [];
-            
-            const numericColumns = [];
-            const categoricalColumns = [];
-            if (allDataRaw.length > 0) {
-                columns.forEach(col => {
-                    const isNumeric = allDataRaw.every(row => {
-                        const value = String(row[col]).replace(',', '.');
-                        return value === '' || value === null || !isNaN(parseFloat(value))
-                    });
-                    if (isNumeric && col !== 'Alarms') numericColumns.push(col);
-                    else categoricalColumns.push(col);
-                });
-            }
-
-            const dateColName = columns.find(c => c.toLowerCase().includes('datum') || c.toLowerCase().includes('logged'));
-            
-            const allData = allDataRaw.map(originalRow => {
-                const row = { ...originalRow };
-
-                numericColumns.forEach(col => {
-                    if (typeof row[col] === 'string') {
-                        row[col] = row[col].replace(',', '.');
-                    }
-                });
-
-                if (dateColName && row[dateColName] && !(row.dateObject instanceof Date)) {
-                     const dateStr = String(row[dateColName]);
-                     let date;
-                     
-                     if (row[dateColName] instanceof Date) {
-                         date = row[dateColName];
-                     }
-                     else if (!isNaN(dateStr) && Number(dateStr) > 10000) {
-                         date = new Date(Math.round((dateStr - 25569) * 86400 * 1000));
-                     } else {
-                         let parts = dateStr.match(/(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{1,2})/);
-                         if (parts) {
-                            date = new Date(parts[1], parseInt(parts[2], 10) - 1, parts[3], parts[4], parts[5], parts[6] || 0);
-                         } else {
-                            parts = dateStr.match(/(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):(\d{1,2})/);
-                            if (parts) {
-                               date = new Date(parts[3], parseInt(parts[2], 10) - 1, parts[1], parts[4], parts[5], parts[6] || 0);
-                            } else {
-                                parts = dateStr.match(/(\d{4})-(\d{2})-(\d{2})/);
-                                if (parts) {
-                                    date = new Date(parts[1], parseInt(parts[2], 10) - 1, parts[3]);
-                                }
-                            }
-                         }
-                     }
-                     if (date && !isNaN(date)) {
-                         row.dateObject = date;
-                     }
+            try {
+                showLoading('Validuji data...');
+                const validationErrors = validateData(data, fileName);
+                if (validationErrors.length > 0) {
+                    hideLoading();
+                    showMessage(`❌ Chyby validace: ${validationErrors.join(', ')}`, 'error');
+                    const uploadZone = document.querySelector(`.upload-zone[data-index="${index}"]`);
+                    uploadZone.classList.remove('loaded');
+                    uploadZone.querySelector('.file-info').textContent = '';
+                    return;
                 }
-                return row;
-            });
+                
+                showLoading('Zpracovávám data...');
+                
+                const allDataRaw = data.filter(row => row && Object.values(row).some(val => val != null && val !== ''));
+                const columns = allDataRaw.length > 0 ? Object.keys(allDataRaw[0]) : [];
+                
+                if (allDataRaw.length < 10) {
+                    if (!confirm(`Soubor obsahuje pouze ${allDataRaw.length} řádků. Chcete pokračovat?`)) {
+                        hideLoading();
+                        const uploadZone = document.querySelector(`.upload-zone[data-index="${index}"]`);
+                        uploadZone.classList.remove('loaded');
+                        uploadZone.querySelector('.file-info').textContent = '';
+                        return;
+                    }
+                }
+                
+                showLoading('Analyzuji sloupce...');
+                
+                const numericColumns = [];
+                const categoricalColumns = [];
+                if (allDataRaw.length > 0) {
+                    columns.forEach(col => {
+                        const isNumeric = allDataRaw.every(row => {
+                            const value = String(row[col]).replace(',', '.');
+                            return value === '' || value === null || !isNaN(parseFloat(value))
+                        });
+                        if (isNumeric && col !== 'Alarms') numericColumns.push(col);
+                        else categoricalColumns.push(col);
+                    });
+                }
 
+                const dateColName = columns.find(c => c.toLowerCase().includes('datum') || c.toLowerCase().includes('logged'));
+                
+                showLoading('Transformuji data...');
+                
+                const allData = allDataRaw.map(originalRow => {
+                    const row = { ...originalRow };
+                    numericColumns.forEach(col => {
+                        if (typeof row[col] === 'string') row[col] = row[col].replace(',', '.');
+                    });
 
-            datasets[index] = {
-                allData,
-                filteredData: allData,
-                columns,
-                numericColumns,
-                categoricalColumns,
-                fileName,
-                currentMode: detectDataType(allData, columns).type
-            };
-            
-            selectedDatasetIndex = index;
-            
-            hideLoading();
-            
-            const uploadZone = document.querySelector(`.upload-zone[data-index="${index}"]`);
-            uploadZone.querySelector('.file-info').textContent = fileName;
-            document.getElementById('startAnalysisBtn').style.display = 'block';
+                    if (dateColName && row[dateColName] && !(row.dateObject instanceof Date)) {
+                         const dateStr = String(row[dateColName]);
+                         let date;
+                         if (row[dateColName] instanceof Date) {
+                             date = row[dateColName];
+                         } else if (!isNaN(dateStr) && Number(dateStr) > 10000) {
+                             date = new Date(Math.round((dateStr - 25569) * 86400 * 1000));
+                         } else {
+                             let parts = dateStr.match(/(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{1,2})/);
+                             if (parts) {
+                                date = new Date(parts[1], parseInt(parts[2], 10) - 1, parts[3], parts[4], parts[5], parts[6] || 0);
+                             } else {
+                                parts = dateStr.match(/(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):(\d{1,2})/);
+                                if (parts) {
+                                   date = new Date(parts[3], parseInt(parts[2], 10) - 1, parts[1], parts[4], parts[5], parts[6] || 0);
+                                } else {
+                                    parts = dateStr.match(/(\d{4})-(\d{2})-(\d{2})/);
+                                    if (parts) date = new Date(parts[1], parseInt(parts[2], 10) - 1, parts[3]);
+                                }
+                             }
+                         }
+                         if (date && !isNaN(date)) row.dateObject = date;
+                    }
+                    return row;
+                });
+
+                datasets[index] = {
+                    allData,
+                    filteredData: allData,
+                    columns,
+                    numericColumns,
+                    categoricalColumns,
+                    fileName,
+                    currentMode: detectDataType(allData, columns).type,
+                    calculatedColumns: []
+                };
+                
+                selectedDatasetIndex = index;
+                hideLoading();
+                
+                const uploadZone = document.querySelector(`.upload-zone[data-index="${index}"]`);
+                uploadZone.querySelector('.file-info').textContent = fileName;
+                document.getElementById('startAnalysisBtn').style.display = 'block';
+                
+                showMessage(`✅ Soubor "${fileName}" úspěšně načten (${allData.length} řádků)`, 'success');
+            } catch (error) {
+                console.error('Chyba při zpracování dat:', error);
+                showMessage(`❌ Chyba při zpracování dat: ${error.message}`, 'error');
+                hideLoading();
+                const uploadZone = document.querySelector(`.upload-zone[data-index="${index}"]`);
+                uploadZone.classList.remove('loaded');
+                uploadZone.querySelector('.file-info').textContent = '';
+            }
         }
 
         function detectDataType(data, cols) {
@@ -749,6 +992,7 @@
             updateDatasetSelector();
             const loadedCount = datasets.filter(d => d).length;
             document.getElementById('comparisonTab').style.display = loadedCount > 1 ? 'block' : 'none';
+            document.getElementById('uploadNewFileBtn').style.display = 'block';
             
             datasets.forEach((ds, i) => {
                 const uploadZone = document.querySelector(`.upload-zone[data-index="${i}"]`);
@@ -820,21 +1064,18 @@
             renderOverviewChart();
             updateChartUI();
             updateDataInfo();
-            updateMLSelects();
             populateAnalyticsSelector();
             populateComparisonSelector();
             applyFilters();
             updateAdvancedAnalytics();
         }
         
-        // Function to get the most relevant temperature column
         function getTemperatureColumn(data) {
             const preferredColumns = ['Return [°C]', 'Supply [°C]'];
             for (const pCol of preferredColumns) {
                 const foundCol = data.columns.find(c => c.trim() === pCol);
                 if (foundCol) return foundCol;
             }
-            // Fallback to the first column with °C if preferred are not found
             return data.columns.find(c => c.includes('°C'));
         }
 
@@ -842,7 +1083,7 @@
             const data = getCurrentData();
             if (!data) return;
             const statsGrid = document.getElementById('statsGrid');
-            statsGrid.innerHTML = ''; // Clear previous stats
+            statsGrid.innerHTML = '';
             let stats = [];
 
             if (data.currentMode === 'refrigeration') {
@@ -941,39 +1182,43 @@
                 endDate = new Date(endDate.getFullYear(), endDate.getMonth(), 0);
             }
             
-            // Format to YYYY-MM-DD
             document.getElementById('startDate').value = startDate.toISOString().split('T')[0];
             document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
             applyFilters();
         }
 
+        const debouncedApplyFilters = debounce(applyFilters, 300);
 
         function applyFilters() {
             const data = getCurrentData();
             if (!data) return;
+            
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = '<tr><td colspan="100%" style="text-align: center; padding: 20px;">Filtruji data...</td></tr>';
+            
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
             const startDateInput = document.getElementById('startDate');
             const endDateInput = document.getElementById('endDate');
             
-            // Fix for valueAsDate being off by one day due to timezone
             const startDate = startDateInput.value ? new Date(startDateInput.value + 'T00:00:00') : null;
             const endDate = endDateInput.value ? new Date(endDateInput.value + 'T23:59:59') : null;
 
-            data.filteredData = data.allData.filter(row => {
-                const textMatch = Object.values(row).some(val => val && val.toString().toLowerCase().includes(searchTerm));
-                const rowDate = row.dateObject;
-                if (!startDate && !endDate) return textMatch;
-                if (!rowDate) return false;
-                
-                const startMatch = !startDate || rowDate >= startDate;
-                const endMatch = !endDate || rowDate <= endDate;
-                return textMatch && startMatch && endMatch;
-            });
-            currentPage = 1;
-            updateTable();
+            setTimeout(() => {
+                data.filteredData = data.allData.filter(row => {
+                    const textMatch = Object.values(row).some(val => val && val.toString().toLowerCase().includes(searchTerm));
+                    const rowDate = row.dateObject;
+                    if (!startDate && !endDate) return textMatch;
+                    if (!rowDate) return false;
+                    
+                    const startMatch = !startDate || rowDate >= startDate;
+                    const endMatch = !endDate || rowDate <= endDate;
+                    return textMatch && startMatch && endMatch;
+                });
+                currentPage = 1;
+                updateTable();
+            }, 0);
         }
         
-        // --- Charting ---
         function getChartColors() {
             const isDarkMode = document.body.classList.contains('dark-mode');
             return {
@@ -1019,21 +1264,8 @@
                         pointRadius: 0,
                     }]
                 };
-                 chartOptions = {
-                    scales: {
-                        x: { 
-                            type: 'time', 
-                            time: { unit: 'day' },
-                            adapters: {
-                                date: {
-                                    locale: window.dateFnsLocaleCs
-                                }
-                            }
-                        }
-                    }
-                };
+                 chartOptions = { scales: { x: { type: 'time', time: { unit: 'day' } } } };
             } else {
-                // Default chart for other data types
                 const categorical = data.categoricalColumns[0];
                 const numerical = data.numericColumns[0];
                 if (!categorical || !numerical) return;
@@ -1076,7 +1308,6 @@
                 }
             });
         }
-
 
         function updateChartUI() {
             const data = getCurrentData();
@@ -1125,13 +1356,31 @@
         function updateChart() {
             const data = getCurrentData();
             if (!data) return;
+            
+            const chartContainer = document.querySelector('#charts .chart-container');
+            if (chartContainer) chartContainer.style.opacity = '0.5';
+            
+            clearTimeout(chartDebounceTimer);
+            chartDebounceTimer = setTimeout(() => {
+                renderChartNow();
+            }, 100);
+        }
+        
+        function renderChartNow() {
+            const data = getCurrentData();
+            if (!data) return;
+            
             const ctx = document.getElementById('mainChart').getContext('2d');
             const chartType = document.getElementById('chartType').value;
             const xCol = document.getElementById('xAxis').value;
             const yCol = document.getElementById('yAxis').value;
             const showTrendline = document.getElementById('showTrendline').checked;
 
-            if (!xCol || !yCol) return;
+            if (!xCol || !yCol) {
+                const chartContainer = document.querySelector('#charts .chart-container');
+                if (chartContainer) chartContainer.style.opacity = '1';
+                return;
+            }
 
             let labels, values;
             const chartData = data.filteredData;
@@ -1194,16 +1443,17 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    animation: {
+                        onComplete: () => {
+                            const chartContainer = document.querySelector('#charts .chart-container');
+                            if (chartContainer) chartContainer.style.opacity = '1';
+                        }
+                    },
                     scales: (chartType !== 'pie' && chartType !== 'doughnut') ? {
                         x: { 
                             type: isTimeSeries ? 'time' : 'category',
                             ticks: { color: colors.textColor }, 
-                            grid: { color: colors.gridColor },
-                            adapters: {
-                                date: {
-                                    locale: window.dateFnsLocaleCs
-                                }
-                            }
+                            grid: { color: colors.gridColor }
                         },
                         y: { ticks: { color: colors.textColor }, grid: { color: colors.gridColor } }
                     } : {},
@@ -1213,7 +1463,6 @@
             });
         }
 
-        // --- Specific Analysis Tabs ---
         function switchTab(tabName) {
             document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
             document.querySelector(`.tab[onclick="switchTab('${tabName}')"]`).classList.add('active');
@@ -1259,17 +1508,13 @@
                 container.innerHTML = `<div class="message error">Pro porovnání nahrajte alespoň dva soubory.</div>`;
                 return;
             }
-
             if (!selectedColumn) {
                 container.innerHTML = `<div class="message error">Vyberte prosím sloupec pro porovnání ze společných sloupců.</div>`;
                 return;
             }
 
-            // --- Table Generation ---
             let tableHtml = `<div class="widget"><h3>Srovnání metrik pro: ${selectedColumn}</h3><div class="table-wrapper"><table class="summary-table"><thead><tr><th>Metrika</th>`;
-            loadedDatasets.forEach(ds => {
-                tableHtml += `<th>${ds.fileName}</th>`;
-            });
+            loadedDatasets.forEach(ds => { tableHtml += `<th>${ds.fileName}</th>`; });
             tableHtml += '</tr></thead><tbody>';
 
             const metrics = ['Průměr', 'Minimum', 'Maximum', 'Součet'];
@@ -1280,18 +1525,10 @@
                     let result = 'N/A';
                     if (values.length > 0) {
                         switch (metric) {
-                            case 'Průměr':
-                                result = (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2);
-                                break;
-                            case 'Minimum':
-                                result = Math.min(...values).toFixed(2);
-                                break;
-                            case 'Maximum':
-                                result = Math.max(...values).toFixed(2);
-                                break;
-                            case 'Součet':
-                                result = values.reduce((a, b) => a + b, 0).toFixed(2);
-                                break;
+                            case 'Průměr': result = (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2); break;
+                            case 'Minimum': result = Math.min(...values).toFixed(2); break;
+                            case 'Maximum': result = Math.max(...values).toFixed(2); break;
+                            case 'Součet': result = values.reduce((a, b) => a + b, 0).toFixed(2); break;
                         }
                     }
                     tableHtml += `<td>${result}</td>`;
@@ -1300,7 +1537,6 @@
             });
             tableHtml += '</tbody></table></div></div>';
 
-            // --- Chart Generation ---
             let chartHtml = `<div class="widget" style="margin-top:20px;"><h3>Porovnání v čase: ${selectedColumn}</h3><div class="chart-container" style="height: 400px;"><canvas id="comparisonChart"></canvas></div></div>`;
             container.innerHTML = tableHtml + chartHtml;
 
@@ -1309,14 +1545,11 @@
             
             const chartDatasets = loadedDatasets.map((ds, index) => {
                 const dateCol = ds.columns.find(c => c.toLowerCase().includes('datum') || c.toLowerCase().includes('logged'));
-                if (!dateCol) return null; // Skip datasets without a date column for this chart
+                if (!dateCol) return null;
 
                 const dataPoints = ds.allData
                     .filter(row => row.dateObject && row[selectedColumn] != null)
-                    .map(row => ({
-                        x: row.dateObject,
-                        y: parseFloat(row[selectedColumn])
-                    }));
+                    .map(row => ({ x: row.dateObject, y: parseFloat(row[selectedColumn]) }));
 
                 return {
                     label: `${ds.fileName}`,
@@ -1327,7 +1560,7 @@
                     tension: 0.2,
                     pointRadius: 2
                 };
-            }).filter(Boolean); // Remove null datasets
+            }).filter(Boolean);
 
             if (comparisonChartInstance) comparisonChartInstance.destroy();
             
@@ -1335,30 +1568,18 @@
                 const chartColors = getChartColors();
                 comparisonChartInstance = new Chart(chartCtx, {
                     type: 'line',
-                    data: {
-                        datasets: chartDatasets
-                    },
+                    data: { datasets: chartDatasets },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
                         scales: {
-                            x: {
-                                type: 'time',
-                                time: { unit: 'day' },
-                                adapters: { date: { locale: window.dateFnsLocaleCs } },
-                                ticks: { color: chartColors.textColor },
-                                grid: { color: chartColors.gridColor }
-                            },
-                            y: {
-                                ticks: { color: chartColors.textColor },
-                                grid: { color: chartColors.gridColor }
-                            }
+                            x: { type: 'time', time: { unit: 'day' }, ticks: { color: chartColors.textColor }, grid: { color: chartColors.gridColor } },
+                            y: { ticks: { color: chartColors.textColor }, grid: { color: chartColors.gridColor } }
                         },
                         plugins: { legend: { labels: { color: chartColors.textColor } } }
                     }
                 });
             } else {
-                 // If no datasets have date info, clear the chart area
                  document.getElementById('comparisonChart').parentElement.innerHTML = '<p style="text-align:center; padding: 20px;">Pro vytvoření časového grafu je potřeba datový sloupec s datem ve všech souborech.</p>';
             }
         }
@@ -1368,7 +1589,6 @@
             if (!data) return;
             const select = document.getElementById('analyticsColumn');
             const currentVal = select.value;
-            
             const options = data.numericColumns.map(c => `<option value="${c}" ${c === currentVal ? 'selected' : ''}>${c}</option>`).join('');
             select.innerHTML = options;
         }
@@ -1383,11 +1603,8 @@
             const selectedColumn = document.getElementById('analyticsColumn').value;
 
             if (data.currentMode === 'refrigeration') {
-                 if(selectedColumn) {
-                    container.innerHTML = generateRefrigerationAnalytics(selectedColumn);
-                 } else {
-                    container.innerHTML = `<div class="message error">Vyberte prosím číselný sloupec pro analýzu.</div>`;
-                 }
+                 if(selectedColumn) container.innerHTML = generateRefrigerationAnalytics(selectedColumn);
+                 else container.innerHTML = `<div class="message error">Vyberte prosím číselný sloupec pro analýzu.</div>`;
             }
             else if (data.currentMode === 'sensor') container.innerHTML = generateSensorAnalytics();
             else container.innerHTML = `<div style="text-align:center; padding: 40px;">Pro tento typ dat není dostupná žádná pokročilá analýza.</div>`;
@@ -1402,12 +1619,10 @@
             let timeOutOfRangeHtml = '';
 
             if (tempCol) {
-                const temps = data.allData.map(row => {
-                    return {
-                        value: parseFloat(String(row[tempCol]).replace(',', '.')),
-                        date: row.dateObject
-                    }
-                }).filter(t => !isNaN(t.value) && t.date);
+                const temps = data.allData.map(row => ({
+                    value: parseFloat(String(row[tempCol]).replace(',', '.')),
+                    date: row.dateObject
+                })).filter(t => !isNaN(t.value) && t.date);
                 
                 if (temps.length > 0) {
                     tempStatsHtml = `
@@ -1415,18 +1630,12 @@
                         <p><strong>Minimum:</strong> ${Math.min(...temps.map(t=>t.value)).toFixed(2)}°C</p>
                         <p><strong>Maximum:</strong> ${Math.max(...temps.map(t=>t.value)).toFixed(2)}°C</p>
                     `;
-
-                    // Calculate time out of range (-18°C)
                     const safeTemp = -18;
                     let outOfRangeMillis = 0;
                     for(let i = 1; i < temps.length; i++) {
                         if (temps[i-1].value > safeTemp && temps[i].value > safeTemp) {
-                            // Assuming data points are sequential and time difference is meaningful
                             const timeDiff = temps[i].date.getTime() - temps[i-1].date.getTime();
-                            // Only add if the time difference is reasonable (e.g., less than an hour) to avoid summing across large gaps
-                            if (timeDiff < 3600000) {
-                                outOfRangeMillis += timeDiff;
-                            }
+                            if (timeDiff < 3600000) outOfRangeMillis += timeDiff;
                         }
                     }
                     const totalMinutes = Math.round(outOfRangeMillis / (1000 * 60));
@@ -1438,7 +1647,7 @@
 
             let stateAnalysisHtml = '';
             if (defrostCol) {
-                 const defrostingTime = data.allData.filter(r => String(r[defrostCol]).toLowerCase() === 'true').length * 5; // Assuming 5 min intervals, might need adjustment
+                 const defrostingTime = data.allData.filter(r => String(r[defrostCol]).toLowerCase() === 'true').length * 5;
                  stateAnalysisHtml += `<p><strong>Celkový čas odmrazování:</strong> ${Math.floor(defrostingTime / 60)}h ${defrostingTime % 60}m</p>`;
             }
              if (alarmCol) {
@@ -1551,6 +1760,124 @@
             html += `</tbody></table></div>`;
             return html;
         }
+        
+        // --- New Tools ---
+        function createCalculatedColumn() {
+            const data = getCurrentData();
+            if (!data) return;
+            
+            const newName = document.getElementById('newColumnName').value.trim();
+            const formula = document.getElementById('newColumnFormula').value.trim();
+
+            if (!newName || !formula) {
+                return showMessage("❌ Zadejte název i vzorec pro nový sloupec.", "error");
+            }
+            if (data.columns.includes(newName)) {
+                return showMessage("❌ Sloupec s tímto názvem již existuje.", "error");
+            }
+
+            try {
+                // Apply the formula to all data
+                data.allData.forEach(row => {
+                    let tempFormula = formula;
+                    const columnNames = formula.match(/\[.*?\]/g) || [];
+                    
+                    for(const col of columnNames) {
+                        const colName = col.substring(1, col.length - 1);
+                        const value = parseFloat(row[colName]);
+                        if (isNaN(value)) throw new Error(`Nečíselná hodnota ve sloupci '${colName}'.`);
+                        tempFormula = tempFormula.replace(col, value);
+                    }
+                    // Basic, safe evaluation
+                    const result = new Function(`return ${tempFormula}`)();
+                    row[newName] = result.toFixed(2);
+                });
+
+                // Update dataset metadata
+                data.columns.push(newName);
+                data.numericColumns.push(newName);
+                data.calculatedColumns.push({name: newName, formula: formula});
+
+                // Refresh UI
+                updateAllVisuals();
+                showMessage(`✅ Sloupec '${newName}' byl úspěšně vytvořen.`, 'success');
+
+            } catch(e) {
+                showMessage(`❌ Chyba ve vzorci: ${e.message}`, 'error');
+            }
+        }
+
+        function generateCorrelationMatrix() {
+            const data = getCurrentData();
+            if (!data) return;
+            const container = document.getElementById('correlationMatrixContainer');
+            container.innerHTML = '<div class="loading-spinner" style="margin: 20px auto;"></div><p style="text-align:center;">Počítám korelaci...</p>';
+            
+            setTimeout(() => {
+                const numericCols = data.numericColumns;
+                const matrix = [];
+
+                for(let i = 0; i < numericCols.length; i++) {
+                    matrix[i] = [];
+                    for(let j = 0; j < numericCols.length; j++) {
+                        if (i === j) {
+                            matrix[i][j] = 1;
+                        } else {
+                            const col1 = data.allData.map(row => parseFloat(row[numericCols[i]])).filter(v => !isNaN(v));
+                            const col2 = data.allData.map(row => parseFloat(row[numericCols[j]])).filter(v => !isNaN(v));
+                            matrix[i][j] = calculateCorrelation(col1, col2);
+                        }
+                    }
+                }
+                renderCorrelationMatrix(matrix, numericCols);
+            }, 100);
+        }
+        
+        function calculateCorrelation(x, y) {
+            const n = Math.min(x.length, y.length);
+            if (n === 0) return 0;
+
+            const meanX = x.slice(0, n).reduce((a, b) => a + b) / n;
+            const meanY = y.slice(0, n).reduce((a, b) => a + b) / n;
+
+            let num = 0, denX = 0, denY = 0;
+
+            for (let i = 0; i < n; i++) {
+                num += (x[i] - meanX) * (y[i] - meanY);
+                denX += Math.pow(x[i] - meanX, 2);
+                denY += Math.pow(y[i] - meanY, 2);
+            }
+            
+            const den = Math.sqrt(denX) * Math.sqrt(denY);
+            return den === 0 ? 0 : num / den;
+        }
+
+        function renderCorrelationMatrix(matrix, columns) {
+            const container = document.getElementById('correlationMatrixContainer');
+            let html = '<table class="correlation-matrix"><thead><tr><th>&nbsp;</th>';
+            columns.forEach(col => html += `<th>${col}</th>`);
+            html += '</tr></thead><tbody>';
+
+            matrix.forEach((row, i) => {
+                html += `<tr><th>${columns[i]}</th>`;
+                row.forEach(val => {
+                    const color = getCorrelationColor(val);
+                    html += `<td style="background-color: ${color};">${val.toFixed(2)}</td>`;
+                });
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        function getCorrelationColor(value) {
+            // value is between -1 and 1
+            const h = (1 - value) * 60; // 0 (red) to 120 (green)
+            const l = Math.abs(value) * 40 + 25; // lightness from 25% to 65%
+            return `hsl(${h}, 90%, ${l}%)`;
+        }
+
 
         // --- Export & Reset ---
         function exportCSV() {
@@ -1577,28 +1904,44 @@
         }
 
         async function exportPDF() {
-            showMessage('Generuji PDF report...', 'success');
-            const { jsPDF } = window.jspdf;
-            const dashboard = document.getElementById('dashboardGrid');
-            const canvas = await html2canvas(dashboard, {
-                backgroundColor: document.body.classList.contains('dark-mode') ? '#1e1e1e' : '#ffffff',
-                scale: 2
-            });
-            const imgData = canvas.toDataURL('image/png');
-            
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-            
-            pdf.setFontSize(22);
-            pdf.text('Report analýzy dat', pdfWidth / 2, 20, { align: 'center' });
-            pdf.setFontSize(12);
-            pdf.text(`Soubor: ${getCurrentData().fileName}`, 15, 30);
-            pdf.text(`Datum exportu: ${new Date().toLocaleString('cs-CZ')}`, 15, 36);
+            try {
+                showLoading('Generuji PDF report...');
+                showMessage('Připravuji PDF export...', 'success');
+                
+                const { jsPDF } = window.jspdf;
+                const dashboard = document.getElementById('dashboardGrid');
+                
+                dashboard.style.opacity = '0.7';
+                
+                const canvas = await html2canvas(dashboard, {
+                    backgroundColor: document.body.classList.contains('dark-mode') ? '#1e1e1e' : '#ffffff',
+                    scale: 2
+                });
+                
+                dashboard.style.opacity = '1';
+                
+                const imgData = canvas.toDataURL('image/png');
+                
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                
+                pdf.setFontSize(22);
+                pdf.text('Report analýzy dat', pdfWidth / 2, 20, { align: 'center' });
+                pdf.setFontSize(12);
+                pdf.text(`Soubor: ${getCurrentData().fileName}`, 15, 30);
+                pdf.text(`Datum exportu: ${new Date().toLocaleString('cs-CZ')}`, 15, 36);
 
-            pdf.addImage(imgData, 'PNG', 15, 45, pdfWidth - 30, pdfHeight - 30);
-            
-            pdf.save(`report_${getCurrentData().fileName}.pdf`);
+                pdf.addImage(imgData, 'PNG', 15, 45, pdfWidth - 30, pdfHeight - 30);
+                
+                pdf.save(`report_${getCurrentData().fileName}.pdf`);
+                
+                hideLoading();
+                showMessage('✅ PDF report úspěšně vygenerován', 'success');
+            } catch (error) {
+                hideLoading();
+                showMessage(`❌ Chyba při generování PDF: ${error.message}`, 'error');
+            }
         }
 
         function downloadFile(content, filename, mimeType) {
@@ -1616,156 +1959,6 @@
         function resetApp() { window.location.reload(); }
         function clearAll() { if (confirm('Opravdu chcete vymazat všechna data a začít znovu?')) resetApp(); }
         
-        // --- ML Functions ---
-        function updateMLSelects() {
-            const data = getCurrentData();
-            if (!data) return;
-            const predictionSelect = document.getElementById('predictionColumn');
-            const anomalySelect = document.getElementById('anomalyColumn');
-            const options = data.numericColumns.map(c => `<option value="${c}">${c}</option>`).join('');
-            
-            if (predictionSelect) predictionSelect.innerHTML = `<option value="">Vyberte sloupec...</option>${options}`;
-            if (anomalySelect) anomalySelect.innerHTML = `<option value="">Vyberte sloupec...</option>${options}`;
-        }
-
-        function findAnomalies() {
-            const data = getCurrentData();
-            if (!data) return;
-            const resultsContainer = document.getElementById('anomalyResults');
-            const column = document.getElementById('anomalyColumn').value;
-            if (!column) {
-                showMessage('Vyberte prosím sloupec pro analýzu anomálií.', 'error');
-                return;
-            }
-
-            const values = data.allData.map(row => parseFloat(row[column])).filter(v => !isNaN(v)).sort((a, b) => a - b);
-            if (values.length < 4) {
-                resultsContainer.innerHTML = `<p style="padding: 10px; text-align: center;">Nedostatek dat pro detekci anomálií.</p>`;
-                return;
-            }
-
-            const q1 = values[Math.floor(values.length / 4)];
-            const q3 = values[Math.floor((values.length / 4) * 3)];
-            const iqr = q3 - q1;
-            const lowerBound = q1 - 1.5 * iqr;
-            const upperBound = q3 + 1.5 * iqr;
-
-            const anomalies = data.allData.filter(row => {
-                const value = parseFloat(row[column]);
-                return !isNaN(value) && (value < lowerBound || value > upperBound);
-            });
-
-            if (anomalies.length === 0) {
-                resultsContainer.innerHTML = `<div class="message success">Nebyly nalezeny žádné významné anomálie.</div>`;
-                return;
-            }
-
-            let html = `<div class="table-wrapper" style="margin-top: 15px;"><table class="summary-table">
-                            <thead><tr><th>#</th><th>Hodnota (${column})</th><th>Stav</th></tr></thead><tbody>`;
-            
-            anomalies.forEach((row, index) => {
-                const value = parseFloat(row[column]);
-                const status = value < lowerBound ? 'Příliš nízká' : 'Příliš vysoká';
-                html += `<tr>
-                            <td>${index + 1}</td>
-                            <td>${value}</td>
-                            <td><span class="sensor-direction direction-OUT">${status}</span></td>
-                         </tr>`;
-            });
-
-            html += `</tbody></table></div>`;
-            resultsContainer.innerHTML = html;
-        }
-
-        function predictTrend() {
-            const data = getCurrentData();
-            if (!data) return;
-            const column = document.getElementById('predictionColumn').value;
-            const steps = parseInt(document.querySelector('#ml-content .ml-section:first-child input[type="number"]').value, 10);
-            const resultContainer = document.getElementById('predictionResult');
-            
-            if (!column) {
-                showMessage('Vyberte sloupec pro predikci.', 'error');
-                return;
-            }
-
-            const dataPoints = data.allData
-                .map((row, index) => ({ x: index, y: parseFloat(row[column]) }))
-                .filter(p => !isNaN(p.y));
-
-            if (dataPoints.length < 2) {
-                showMessage('Nedostatek dat pro vytvoření predikce.', 'error');
-                return;
-            }
-
-            const { slope, intercept } = calculateLinearRegression(dataPoints);
-
-            const lastX = dataPoints[dataPoints.length - 1].x;
-            const predictedPoints = [];
-            for (let i = 1; i <= steps; i++) {
-                const newX = lastX + i;
-                predictedPoints.push({
-                    x: newX,
-                    y: slope * newX + intercept
-                });
-            }
-
-            resultContainer.style.display = 'block';
-            resultContainer.innerHTML = '<canvas id="predictionChart"></canvas>';
-            const ctx = document.getElementById('predictionChart').getContext('2d');
-
-            if (predictionChartInstance) {
-                predictionChartInstance.destroy();
-            }
-
-            const colors = getChartColors();
-
-            predictionChartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    datasets: [
-                        {
-                            label: `Původní data (${column})`,
-                            data: dataPoints,
-                            borderColor: 'var(--primary-color)',
-                            tension: 0.1
-                        },
-                        {
-                            label: `Predikce (${steps} kroků)`,
-                            data: [dataPoints[dataPoints.length - 1], ...predictedPoints],
-                            borderColor: 'var(--danger-color)',
-                            borderDash: [5, 5],
-                            tension: 0.1
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: {
-                            type: 'linear',
-                            title: { display: true, text: 'Časový krok / Index', color: colors.textColor },
-                            ticks: { color: colors.textColor },
-                            grid: { color: colors.gridColor }
-                        },
-                        y: {
-                            title: { display: true, text: `Hodnota (${column})`, color: colors.textColor },
-                            ticks: { color: colors.textColor },
-                            grid: { color: colors.gridColor }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            labels: {
-                                color: colors.textColor
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
         // --- Init ---
         document.addEventListener('DOMContentLoaded', () => {
              applySavedTheme();
