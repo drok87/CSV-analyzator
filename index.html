@@ -6,6 +6,7 @@
     <title>Interaktivní Data Analyzátor s ML</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <script src="https://unpkg.com/chart.js-chart-box-and-violin-plot/build/Chart.BoxPlot.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -33,6 +34,7 @@
             --color-charts: #FF9500;
             --color-comparison: #AF52DE;
             --color-analytics: #5AC8FA;
+            --color-cleaning: #FF2D55;
             --color-tools: #5856D6;
             --color-export: #8E8E93;
         }
@@ -58,6 +60,7 @@
             --color-charts: #FF9F0A;
             --color-comparison: #BF5AF2;
             --color-analytics: #64D2FF;
+            --color-cleaning: #FF375F;
             --color-tools: #5E5CE6;
             --color-export: #98989D;
         }
@@ -213,6 +216,7 @@
         .tab.active[data-color="charts"] { background-color: var(--color-charts); }
         .tab.active[data-color="comparison"] { background-color: var(--color-comparison); }
         .tab.active[data-color="analytics"] { background-color: var(--color-analytics); }
+        .tab.active[data-color="cleaning"] { background-color: var(--color-cleaning); }
         .tab.active[data-color="tools"] { background-color: var(--color-tools); }
         .tab.active[data-color="export"] { background-color: var(--color-export); }
 
@@ -222,6 +226,7 @@
         #charts .widget h3 { color: var(--color-charts); }
         #comparison .widget h3 { color: var(--color-comparison); }
         #analytics .widget h3 { color: var(--color-analytics); }
+        #cleaning .widget h3, #cleaning .tool-section h4 { color: var(--color-cleaning); }
         #tools .widget h3, #tools .tool-section h4 { color: var(--color-tools); }
         #export .widget h3 { color: var(--color-export); }
 
@@ -486,7 +491,8 @@
                 <div class="tab" data-color="charts" onclick="switchTab('charts')">📈 Grafy</div>
                 <div class="tab" data-color="comparison" id="comparisonTab" style="display: none;" onclick="switchTab('comparison')">⚖️ Porovnání</div>
                 <div class="tab" data-color="analytics" onclick="switchTab('analytics')">🔍 Pokročilé analýzy</div>
-                <div class="tab" data-color="tools" onclick="switchTab('tools')">🛠️ Nástroje</div>
+                <div class="tab" data-color="cleaning" onclick="switchTab('cleaning')">🧹 Čištění Dat</div>
+                <div class="tab" data-color="tools" onclick="switchTab('tools')">🛠️ Pokročilé Nástroje</div>
                 <div class="tab" data-color="export" onclick="switchTab('export')">💾 Export</div>
             </div>
 
@@ -538,10 +544,22 @@
             <!-- Charts -->
             <div id="charts" class="tab-content">
                 <div class="controls">
-                    <select id="chartType" onchange="updateChartUI()"><option value="bar">📊 Sloupcový</option><option value="line">📈 Čárový</option><option value="pie">🥧 Koláčový</option><option value="doughnut">🍩 Prstencový</option><option value="scatter">☄️ Bodový</option></select>
+                    <select id="chartType" onchange="updateChartUI()">
+                        <option value="bar">📊 Sloupcový</option>
+                        <option value="line">📈 Čárový</option>
+                        <option value="area">📈 Plošný</option>
+                        <option value="pie">🥧 Koláčový</option>
+                        <option value="doughnut">🍩 Prstencový</option>
+                        <option value="scatter">☄️ Bodový</option>
+                        <option value="boxplot">📦 Box Plot</option>
+                    </select>
                     <select id="xAxis" onchange="updateChart()"><option>Vyberte...</option></select>
                     <select id="yAxis" onchange="updateChart()"><option>Vyberte...</option></select>
-                    <label><input type="checkbox" id="showTrendline" onchange="updateChart()"> Zobrazit trend</label>
+                </div>
+                <div class="controls sub-controls" id="chartOptions">
+                    <label id="trendlineOption"><input type="checkbox" id="showTrendline" onchange="updateChart()"> Zobrazit trend</label>
+                    <label id="yAxis2Option"><input type="checkbox" id="enableYAxis2" onchange="updateChart()"> Druhá osa Y</label>
+                    <select id="yAxis2" onchange="updateChart()"></select>
                 </div>
                 <div class="chart-container">
                     <canvas id="mainChart"></canvas>
@@ -566,10 +584,47 @@
                 <div id="analyticsContent"></div>
             </div>
             
+            <!-- Data Cleaning -->
+            <div id="cleaning" class="tab-content">
+                <div class="widget">
+                    <h3>🧹 Nástroje pro čištění dat</h3>
+                    <p>Upravte svá data před analýzou. Všechny operace jsou nevratné v rámci této relace.</p>
+                </div>
+                <div class="tool-section">
+                    <h4>Najít a nahradit</h4>
+                    <div class="controls">
+                        <select id="findReplaceColumn"></select>
+                        <input type="text" id="findValue" placeholder="Najít hodnotu...">
+                        <input type="text" id="replaceValue" placeholder="Nahradit za...">
+                        <button onclick="findAndReplace()">Nahradit</button>
+                    </div>
+                </div>
+                <div class="tool-section">
+                    <h4>Odstranit duplicitní řádky</h4>
+                    <p>Prohledá celý dataset a odstraní řádky, které jsou naprosto identické.</p>
+                    <div class="controls">
+                        <button class="btn-danger" onclick="removeDuplicates()">Odstranit duplikáty</button>
+                    </div>
+                </div>
+                <div class="tool-section">
+                    <h4>Zpracovat chybějící hodnoty</h4>
+                    <p>Vyberte sloupec a zvolte, jak naložit s řádky, které v něm mají prázdnou hodnotu.</p>
+                    <div class="controls">
+                        <select id="missingValuesColumn"></select>
+                        <select id="missingValuesAction">
+                            <option value="remove">Odstranit řádek</option>
+                            <option value="fillZero">Vyplnit nulou (0)</option>
+                            <option value="fillMean">Vyplnit průměrem</option>
+                        </select>
+                        <button onclick="handleMissingValues()">Provést</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Tools -->
             <div id="tools" class="tab-content">
                 <div class="widget">
-                    <h3>🛠️ Analytické nástroje</h3>
+                    <h3>🛠️ Pokročilé Nástroje</h3>
                     <p>Vytvořte si vlastní sloupce nebo prozkoumejte vztahy mezi daty.</p>
                 </div>
                 <div id="tools-content">
@@ -627,7 +682,10 @@
             <h3>🔍 Pokročilé analýzy</h3>
             <p>Tato sekce nabízí specifické analýzy pro rozpoznané typy dat (např. data z chladírenských zařízení nebo senzorů). Zobrazí vám podrobnější statistiky a doporučení.</p>
             
-            <h3>🛠️ Nástroje</h3>
+            <h3>🧹 Čištění Dat</h3>
+            <p>Upravte svá data před analýzou. Můžete hromadně nahradit hodnoty v určitém sloupci, odstranit zcela identické řádky nebo se vypořádat s chybějícími hodnotami (např. smazáním řádku nebo vyplněním průměrem).</p>
+
+            <h3>🛠️ Pokročilé Nástroje</h3>
             <p><strong>Počítané sloupce:</strong> Vytvořte si vlastní datový sloupec pomocí matematického vzorce. Například pokud máte sloupce [Cena] a [Počet], můžete vytvořit sloupec 'Tržba' se vzorcem <code>[Cena] * [Počet]</code>.</p>
             <p><strong>Korelační matice:</strong> Tento nástroj vám ukáže, jak jsou na sobě závislé jednotlivé číselné sloupce. Zelená barva značí silnou přímou úměru, červená silnou nepřímou úměru.</p>
 
@@ -895,7 +953,7 @@
                 showLoading('Zpracovávám data...');
                 
                 const allDataRaw = data.filter(row => row && Object.values(row).some(val => val != null && val !== ''));
-                const columns = allDataRaw.length > 0 ? Object.keys(allDataRaw[0]) : [];
+                let columns = allDataRaw.length > 0 ? Object.keys(allDataRaw[0]) : [];
                 
                 if (allDataRaw.length < 10) {
                     if (!confirm(`Soubor obsahuje pouze ${allDataRaw.length} řádků. Chcete pokračovat?`)) {
@@ -907,29 +965,15 @@
                     }
                 }
                 
-                showLoading('Analyzuji sloupce...');
-                
-                const numericColumns = [];
-                const categoricalColumns = [];
-                if (allDataRaw.length > 0) {
-                    columns.forEach(col => {
-                        const isNumeric = allDataRaw.every(row => {
-                            const value = String(row[col]).replace(',', '.');
-                            return value === '' || value === null || !isNaN(parseFloat(value))
-                        });
-                        if (isNumeric && col !== 'Alarms') numericColumns.push(col);
-                        else categoricalColumns.push(col);
-                    });
-                }
-
                 const dateColName = columns.find(c => c.toLowerCase().includes('datum') || c.toLowerCase().includes('logged'));
-                
-                showLoading('Transformuji data...');
                 
                 const allData = allDataRaw.map(originalRow => {
                     const row = { ...originalRow };
-                    numericColumns.forEach(col => {
-                        if (typeof row[col] === 'string') row[col] = row[col].replace(',', '.');
+                    
+                    columns.forEach(col => {
+                        if(typeof row[col] === 'string') {
+                            row[col] = row[col].replace(',', '.');
+                        }
                     });
 
                     if (dateColName && row[dateColName] && !(row.dateObject instanceof Date)) {
@@ -957,17 +1001,17 @@
                     }
                     return row;
                 });
-
+                
                 datasets[index] = {
                     allData,
                     filteredData: allData,
-                    columns,
-                    numericColumns,
-                    categoricalColumns,
+                    columns: columns,
                     fileName,
                     currentMode: detectDataType(allData, columns).type,
                     calculatedColumns: []
                 };
+                
+                recalculateColumnTypes(datasets[index]);
                 
                 selectedDatasetIndex = index;
                 hideLoading();
@@ -985,6 +1029,24 @@
                 uploadZone.classList.remove('loaded');
                 uploadZone.querySelector('.file-info').textContent = '';
             }
+        }
+        
+        function recalculateColumnTypes(data) {
+            if (!data) return;
+            const numericColumns = [];
+            const categoricalColumns = [];
+            if (data.allData.length > 0) {
+                data.columns.forEach(col => {
+                    const isNumeric = data.allData.every(row => {
+                        const value = String(row[col]);
+                        return value === '' || value === 'null' || value === 'undefined' || !isNaN(parseFloat(value))
+                    });
+                    if (isNumeric && col !== 'Alarms') numericColumns.push(col);
+                    else categoricalColumns.push(col);
+                });
+            }
+            data.numericColumns = numericColumns;
+            data.categoricalColumns = categoricalColumns;
         }
 
         function detectDataType(data, cols) {
@@ -1074,6 +1136,7 @@
             updateDataInfo();
             populateAnalyticsSelector();
             populateComparisonSelector();
+            populateCleaningSelects();
             applyFilters();
             updateAdvancedAnalytics();
         }
@@ -1097,7 +1160,7 @@
             if (data.currentMode === 'refrigeration') {
                 const tempCol = getTemperatureColumn(data);
                 if (tempCol) {
-                    const temps = data.allData.map(row => parseFloat(String(row[tempCol]).replace(',', '.'))).filter(t => !isNaN(t));
+                    const temps = data.allData.map(row => parseFloat(String(row[tempCol]))).filter(t => !isNaN(t));
                     if (temps.length > 0) {
                         stats.push({ title: `${(temps.reduce((a, b) => a + b, 0) / temps.length).toFixed(1)}°C`, subtitle: 'Prům. teplota' });
                         stats.push({ title: `${Math.min(...temps).toFixed(1)}°C`, subtitle: 'Min. teplota' });
@@ -1144,7 +1207,7 @@
             tableHead.innerHTML = '<tr>' + visibleCols.map(col => `<th>${col}</th>`).join('') + '</tr>';
             const startIndex = (currentPage - 1) * itemsPerPage;
             const pageData = data.filteredData.slice(startIndex, startIndex + itemsPerPage);
-            tableBody.innerHTML = pageData.map(row => '<tr>' + visibleCols.map(col => `<td>${row[col] || ''}</td>`).join('') + '</tr>').join('');
+            tableBody.innerHTML = pageData.map(row => '<tr>' + visibleCols.map(col => `<td>${row[col] === null || row[col] === undefined ? '' : row[col]}</td>`).join('') + '</tr>').join('');
             updatePagination();
         }
 
@@ -1264,7 +1327,7 @@
                     labels: plotData.map(r => r.dateObject),
                     datasets: [{
                         label: `Teplota (${tempCol})`,
-                        data: plotData.map(r => parseFloat(String(r[tempCol]).replace(',', '.'))),
+                        data: plotData.map(r => parseFloat(String(r[tempCol]))),
                         borderColor: getCssVariable('--primary-color'),
                         backgroundColor: getCssVariable('--primary-color') + '20', // Add transparency
                         fill: true,
@@ -1281,7 +1344,7 @@
                 chartType = 'bar';
                 const aggregatedData = data.allData.reduce((acc, row) => {
                     const category = row[categorical] || 'N/A';
-                    acc[category] = (acc[category] || 0) + parseFloat(String(row[numerical]).replace(',', '.'));
+                    acc[category] = (acc[category] || 0) + parseFloat(String(row[numerical]));
                     return acc;
                 }, {});
 
@@ -1323,27 +1386,46 @@
             const chartType = document.getElementById('chartType').value;
             const xAxisSelect = document.getElementById('xAxis');
             const yAxisSelect = document.getElementById('yAxis');
+            const yAxis2Select = document.getElementById('yAxis2');
+            const trendlineOption = document.getElementById('trendlineOption');
+            const yAxis2Option = document.getElementById('yAxis2Option');
+            
             let xOptions = '', yOptions = '';
             
             const dateCol = data.columns.find(c => c.toLowerCase().includes('datum') || c.toLowerCase().includes('logged'));
 
-            switch(chartType) {
-                case 'pie': case 'doughnut':
-                    xOptions = data.categoricalColumns.map(c => `<option value="${c}">${c}</option>`).join('');
-                    yOptions = data.numericColumns.map(c => `<option value="${c}">${c}</option>`).join('');
-                    break;
-                case 'scatter':
-                    xOptions = data.numericColumns.map(c => `<option value="${c}">${c}</option>`).join('');
-                    yOptions = data.numericColumns.map(c => `<option value="${c}">${c}</option>`).join('');
-                    break;
-                default: // line, bar
-                    let allXOptions = [...data.categoricalColumns];
-                    if(dateCol) allXOptions.unshift(dateCol);
-                    xOptions = allXOptions.map(c => `<option value="${c}">${c}</option>`).join('');
-                    yOptions = data.numericColumns.map(c => `<option value="${c}">${c}</option>`).join('');
+            if (['bar', 'line', 'area'].includes(chartType)) {
+                trendlineOption.style.display = 'inline-flex';
+                yAxis2Option.style.display = 'inline-flex';
+                yAxis2Select.style.display = 'inline-block';
+            } else {
+                trendlineOption.style.display = 'none';
+                yAxis2Option.style.display = 'none';
+                yAxis2Select.style.display = 'none';
             }
+
+            if(chartType === 'boxplot') {
+                xOptions = data.categoricalColumns.map(c => `<option value="${c}">${c}</option>`).join('');
+                yOptions = data.numericColumns.map(c => `<option value="${c}">${c}</option>`).join('');
+                trendlineOption.style.display = 'none';
+                yAxis2Option.style.display = 'none';
+                yAxis2Select.style.display = 'none';
+            } else if (['pie', 'doughnut'].includes(chartType)) {
+                xOptions = data.categoricalColumns.map(c => `<option value="${c}">${c}</option>`).join('');
+                yOptions = data.numericColumns.map(c => `<option value="${c}">${c}</option>`).join('');
+            } else if (chartType === 'scatter') {
+                xOptions = data.numericColumns.map(c => `<option value="${c}">${c}</option>`).join('');
+                yOptions = data.numericColumns.map(c => `<option value="${c}">${c}</option>`).join('');
+            } else { // line, bar, area
+                let allXOptions = [...data.categoricalColumns];
+                if(dateCol) allXOptions.unshift(dateCol);
+                xOptions = allXOptions.map(c => `<option value="${c}">${c}</option>`).join('');
+                yOptions = data.numericColumns.map(c => `<option value="${c}">${c}</option>`).join('');
+            }
+            
             xAxisSelect.innerHTML = xOptions;
             yAxisSelect.innerHTML = yOptions;
+            yAxis2Select.innerHTML = yOptions;
             updateChart();
         }
 
@@ -1360,6 +1442,19 @@
             const intercept = (sumY - slope * sumX) / n;
             return { slope, intercept };
         }
+
+        function calculateBoxPlotStats(arr) {
+            if (!arr || arr.length === 0) return { min: 0, q1: 0, median: 0, q3: 0, max: 0 };
+            const sorted = arr.slice().sort((a, b) => a - b);
+            const q1 = sorted[Math.floor(sorted.length / 4)];
+            const median = sorted[Math.floor(sorted.length / 2)];
+            const q3 = sorted[Math.floor((sorted.length * 3) / 4)];
+            const iqr = q3 - q1;
+            const min = Math.min(...sorted);
+            const max = Math.max(...sorted);
+            return { min, q1, median, q3, max };
+        }
+
 
         function updateChart() {
             const data = getCurrentData();
@@ -1383,6 +1478,8 @@
             const xCol = document.getElementById('xAxis').value;
             const yCol = document.getElementById('yAxis').value;
             const showTrendline = document.getElementById('showTrendline').checked;
+            const enableY2 = document.getElementById('enableYAxis2').checked;
+            const yCol2 = document.getElementById('yAxis2').value;
 
             if (!xCol || !yCol) {
                 const chartContainer = document.querySelector('#charts .chart-container');
@@ -1390,84 +1487,136 @@
                 return;
             }
 
-            let labels, values;
+            let labels, datasets;
             const chartData = data.filteredData;
-            
             const dateColName = data.columns.find(c => c.toLowerCase().includes('datum') || c.toLowerCase().includes('logged'));
             const isTimeSeries = xCol === dateColName;
 
-            if (['pie', 'doughnut'].includes(chartType)) {
-                const aggregated = chartData.reduce((acc, row) => {
+            const chartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { onComplete: () => {
+                    const chartContainer = document.querySelector('#charts .chart-container');
+                    if (chartContainer) chartContainer.style.opacity = '1';
+                }},
+                scales: {},
+                plugins: { legend: { labels: { color: getChartColors().textColor } } },
+                onClick: (event, elements) => handleChartClick(event, elements, mainChartInstance)
+            };
+
+            if (chartType === 'boxplot') {
+                const groupedData = chartData.reduce((acc, row) => {
                     const key = row[xCol] || 'N/A';
-                    const value = parseFloat(String(row[yCol]).replace(',', '.'));
-                    if(!isNaN(value)) {
-                       acc[key] = (acc[key] || 0) + value;
-                    }
+                    if (!acc[key]) acc[key] = [];
+                    const value = parseFloat(row[yCol]);
+                    if (!isNaN(value)) acc[key].push(value);
                     return acc;
                 }, {});
-                labels = Object.keys(aggregated);
-                values = Object.values(aggregated);
-            } else if (isTimeSeries) {
-                 labels = chartData.map(r => r.dateObject).filter(Boolean);
-                 values = chartData.map(r => parseFloat(String(r[yCol]).replace(',', '.')));
-            } else {
-                labels = chartData.map(r => r[xCol]);
-                values = chartData.map(r => parseFloat(String(r[yCol]).replace(',', '.')));
-            }
-            
-            const datasets = [{
-                label: `${yCol} podle ${xCol}`,
-                data: values,
-                backgroundColor: chartType === 'line' ? getCssVariable('--primary-color') + '20' : getCssVariable('--primary-color'),
-                borderColor: getCssVariable('--primary-color'),
-                fill: chartType === 'line',
-                tension: 0.1
-            }];
-
-            if (showTrendline && (chartType === 'line' || chartType === 'scatter')) {
-                const trendData = chartData.map((row, index) => ({
-                    x: isTimeSeries && row.dateObject ? row.dateObject.getTime() : index,
-                    y: parseFloat(String(row[yCol]).replace(',', '.'))
-                })).filter(p => p.x != null && !isNaN(p.x) && !isNaN(p.y));
                 
-                if (trendData.length > 1) {
-                    const { slope, intercept } = calculateLinearRegression(trendData);
+                labels = Object.keys(groupedData);
+                const boxplotData = labels.map(label => {
+                    const values = groupedData[label];
+                    return calculateBoxPlotStats(values);
+                });
+
+                datasets = [{
+                    label: `${yCol} podle ${xCol}`,
+                    data: boxplotData,
+                    backgroundColor: getCssVariable('--primary-color') + '80',
+                    borderColor: getCssVariable('--primary-color'),
+                    borderWidth: 1,
+                }];
+                chartOptions.scales = {
+                    x: { ticks: { color: getChartColors().textColor }, grid: { color: getChartColors().gridColor } },
+                    y: { ticks: { color: getChartColors().textColor }, grid: { color: getChartColors().gridColor } }
+                };
+
+            } else {
+                let values;
+                if (['pie', 'doughnut'].includes(chartType)) {
+                    const aggregated = chartData.reduce((acc, row) => {
+                        const key = row[xCol] || 'N/A';
+                        const value = parseFloat(String(row[yCol]));
+                        if(!isNaN(value)) acc[key] = (acc[key] || 0) + value;
+                        return acc;
+                    }, {});
+                    labels = Object.keys(aggregated);
+                    values = Object.values(aggregated);
+                } else if (isTimeSeries) {
+                     labels = chartData.map(r => r.dateObject).filter(Boolean);
+                     values = chartData.map(r => parseFloat(String(r[yCol])));
+                } else {
+                    labels = chartData.map(r => r[xCol]);
+                    values = chartData.map(r => parseFloat(String(r[yCol])));
+                }
+                
+                const isAreaOrLine = ['line', 'area'].includes(chartType);
+                datasets = [{
+                    label: `${yCol} podle ${xCol}`,
+                    data: values,
+                    backgroundColor: isAreaOrLine ? getCssVariable('--primary-color') + '20' : getCssVariable('--primary-color'),
+                    borderColor: getCssVariable('--primary-color'),
+                    fill: isAreaOrLine,
+                    tension: 0.1,
+                    yAxisID: 'y'
+                }];
+
+                if (showTrendline && (chartType === 'line' || chartType === 'scatter' || chartType === 'area')) {
+                    const trendData = chartData.map((row, index) => ({
+                        x: isTimeSeries && row.dateObject ? row.dateObject.getTime() : index,
+                        y: parseFloat(String(row[yCol]))
+                    })).filter(p => p.x != null && !isNaN(p.x) && !isNaN(p.y));
+                    
+                    if (trendData.length > 1) {
+                        const { slope, intercept } = calculateLinearRegression(trendData);
+                        datasets.push({
+                            label: 'Trendová čára',
+                            data: trendData.map(p => ({ x: p.x, y: slope * p.x + intercept })),
+                            type: 'line',
+                            borderColor: getCssVariable('--danger-color'),
+                            fill: false,
+                            pointRadius: 0
+                        });
+                    }
+                }
+
+                if (enableY2 && yCol2 && ['line', 'bar', 'area'].includes(chartType)) {
+                    const values2 = chartData.map(r => parseFloat(String(r[yCol2])));
                     datasets.push({
-                        label: 'Trendová čára',
-                        data: trendData.map(p => ({ x: p.x, y: slope * p.x + intercept })),
+                        label: `${yCol2} podle ${xCol}`,
+                        data: values2,
+                        borderColor: getCssVariable('--color-analytics'),
+                        backgroundColor: getCssVariable('--color-analytics') + '80',
                         type: 'line',
-                        borderColor: getCssVariable('--danger-color'),
                         fill: false,
-                        pointRadius: 0
+                        yAxisID: 'y1'
                     });
                 }
-            }
-
-            if (mainChartInstance) mainChartInstance.destroy();
-            const colors = getChartColors();
-            mainChartInstance = new Chart(ctx, {
-                type: chartType,
-                data: { labels, datasets },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: {
-                        onComplete: () => {
-                            const chartContainer = document.querySelector('#charts .chart-container');
-                            if (chartContainer) chartContainer.style.opacity = '1';
-                        }
-                    },
-                    scales: (chartType !== 'pie' && chartType !== 'doughnut') ? {
-                        x: { 
-                            type: isTimeSeries ? 'time' : 'category',
-                            ticks: { color: colors.textColor }, 
-                            grid: { color: colors.gridColor }
-                        },
-                        y: { ticks: { color: colors.textColor }, grid: { color: colors.gridColor } }
-                    } : {},
-                    plugins: { legend: { labels: { color: colors.textColor } } },
-                     onClick: (event, elements) => handleChartClick(event, elements, mainChartInstance)
+                
+                if (chartType !== 'pie' && chartType !== 'doughnut') {
+                    chartOptions.scales = {
+                        x: { type: isTimeSeries ? 'time' : 'category', ticks: { color: getChartColors().textColor }, grid: { color: getChartColors().gridColor } },
+                        y: { type: 'linear', display: true, position: 'left', ticks: { color: getChartColors().textColor }, grid: { color: getChartColors().gridColor } }
+                    };
+                    if (enableY2 && yCol2) {
+                        chartOptions.scales.y1 = {
+                            type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false },
+                            ticks: { color: getCssVariable('--color-analytics') }
+                        };
+                    }
                 }
+            }
+            
+            if (mainChartInstance) mainChartInstance.destroy();
+            
+            let finalChartType = chartType;
+            if (chartType === 'area') finalChartType = 'line';
+            if (chartType === 'boxplot') finalChartType = 'boxplot';
+
+            mainChartInstance = new Chart(ctx, {
+                type: finalChartType,
+                data: { labels, datasets },
+                options: chartOptions
             });
         }
 
@@ -1483,6 +1632,8 @@
             } else if (tabName === 'comparison') {
                 populateComparisonSelector();
                 updateComparisonView();
+            } else if (tabName === 'cleaning') {
+                populateCleaningSelects();
             }
         }
         
@@ -1632,7 +1783,7 @@
 
             if (tempCol) {
                 const temps = data.allData.map(row => ({
-                    value: parseFloat(String(row[tempCol]).replace(',', '.')),
+                    value: parseFloat(String(row[tempCol])),
                     date: row.dateObject
                 })).filter(t => !isNaN(t.value) && t.date);
                 
@@ -1773,7 +1924,103 @@
             return html;
         }
         
-        // --- New Tools ---
+        // --- Data Cleaning Tools ---
+        function populateCleaningSelects() {
+            const data = getCurrentData();
+            if (!data) return;
+            const findReplaceSelect = document.getElementById('findReplaceColumn');
+            const missingValuesSelect = document.getElementById('missingValuesColumn');
+            const options = data.columns.map(c => `<option value="${c}">${c}</option>`).join('');
+            findReplaceSelect.innerHTML = options;
+            missingValuesSelect.innerHTML = options;
+        }
+
+        function findAndReplace() {
+            const data = getCurrentData();
+            if (!data) return;
+            const column = document.getElementById('findReplaceColumn').value;
+            const findValue = document.getElementById('findValue').value;
+            const replaceValue = document.getElementById('replaceValue').value;
+
+            if (!column || findValue === '') {
+                return showMessage('❌ Vyberte sloupec a zadejte hodnotu, kterou chcete najít.', 'error');
+            }
+            
+            let changes = 0;
+            data.allData.forEach(row => {
+                if(String(row[column]) === findValue) {
+                    row[column] = replaceValue;
+                    changes++;
+                }
+            });
+
+            recalculateColumnTypes(data);
+            updateAllVisuals();
+            showMessage(`✅ Nahrazeno ${changes} hodnot ve sloupci '${column}'.`, 'success');
+        }
+
+        function removeDuplicates() {
+            const data = getCurrentData();
+            if (!data) return;
+            const originalCount = data.allData.length;
+            const uniqueRowsAsStrings = new Set(data.allData.map(row => JSON.stringify(row)));
+            const uniqueRows = Array.from(uniqueRowsAsStrings).map(str => JSON.parse(str));
+            const removedCount = originalCount - uniqueRows.length;
+
+            // After JSON stringify/parse, Date objects become strings. We need to convert them back.
+            const dateColName = data.columns.find(c => c.toLowerCase().includes('datum') || c.toLowerCase().includes('logged'));
+            if (dateColName) {
+                uniqueRows.forEach(row => {
+                    if (row.dateObject && typeof row.dateObject === 'string') {
+                        const parsedDate = new Date(row.dateObject);
+                        if (!isNaN(parsedDate)) {
+                            row.dateObject = parsedDate;
+                        }
+                    }
+                });
+            }
+            
+            data.allData = uniqueRows;
+            
+            updateAllVisuals();
+            showMessage(`✅ Odstraněno ${removedCount} duplicitních řádků.`, 'success');
+        }
+
+        function handleMissingValues() {
+            const data = getCurrentData();
+            if (!data) return;
+            const column = document.getElementById('missingValuesColumn').value;
+            const action = document.getElementById('missingValuesAction').value;
+            const originalCount = data.allData.length;
+            let mean = 0;
+
+            if (action === 'fillMean') {
+                if (!data.numericColumns.includes(column)) {
+                    return showMessage('❌ Pro výpočet průměru musí být sloupec číselný.', 'error');
+                }
+                const values = data.allData.map(row => parseFloat(row[column])).filter(v => !isNaN(v));
+                mean = values.reduce((a, b) => a + b, 0) / values.length;
+            }
+            
+            if (action === 'remove') {
+                data.allData = data.allData.filter(row => row[column] !== '' && row[column] !== null && row[column] !== undefined);
+            } else {
+                data.allData.forEach(row => {
+                    if (row[column] === '' || row[column] === null || row[column] === undefined) {
+                        if (action === 'fillZero') row[column] = 0;
+                        if (action === 'fillMean') row[column] = mean.toFixed(2);
+                    }
+                });
+            }
+            
+            const changes = originalCount - data.allData.length;
+            recalculateColumnTypes(data);
+            updateAllVisuals();
+            showMessage(`✅ Operace dokončena. Změněno/odstraněno ${changes > 0 ? changes : 'mnoho'} řádků.`, 'success');
+        }
+
+
+        // --- Advanced Tools ---
         function createCalculatedColumn() {
             const data = getCurrentData();
             if (!data) return;
@@ -1789,7 +2036,6 @@
             }
 
             try {
-                // Apply the formula to all data
                 data.allData.forEach(row => {
                     let tempFormula = formula;
                     const columnNames = formula.match(/\[.*?\]/g) || [];
@@ -1800,17 +2046,12 @@
                         if (isNaN(value)) throw new Error(`Nečíselná hodnota ve sloupci '${colName}'.`);
                         tempFormula = tempFormula.replace(col, value);
                     }
-                    // Basic, safe evaluation
                     const result = new Function(`return ${tempFormula}`)();
                     row[newName] = result.toFixed(2);
                 });
 
-                // Update dataset metadata
                 data.columns.push(newName);
-                data.numericColumns.push(newName);
-                data.calculatedColumns.push({name: newName, formula: formula});
-
-                // Refresh UI
+                recalculateColumnTypes(data);
                 updateAllVisuals();
                 showMessage(`✅ Sloupec '${newName}' byl úspěšně vytvořen.`, 'success');
 
