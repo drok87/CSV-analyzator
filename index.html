@@ -118,7 +118,7 @@
             color: var(--secondary-text-color);
         }
         
-        .theme-switcher {
+.theme-switcher {
             position: absolute;
             top: 20px;
             left: 20px;
@@ -546,6 +546,27 @@
                     <button class="btn-secondary" onclick="setDateRange('thisMonth')">Tento měsíc</button>
                     <button class="btn-secondary" onclick="setDateRange('lastMonth')">Minulý měsíc</button>
                 </div>
+                <!-- Přidání ovládacích prvků pro pokročilé filtrování a řazení -->
+                <div class="tool-section">
+                    <h4>Pokročilé filtry</h4>
+                    <div id="filter-controls" class="controls">
+                        <select id="filterColumn-0"></select>
+                        <select id="filterOperator-0">
+                            <option value="contains">Obsahuje</option>
+                            <option value="equals">=</option>
+                            <option value=">">></option>
+                            <option value="<"><</option>
+                            <option value=">=">>=</option>
+                            <option value="<="><=</option>
+                            <option value="!=">!=</option>
+                        </select>
+                        <input type="text" id="filterValue-0" placeholder="Hodnota...">
+                        <button onclick="addFilter()">+</button>
+                    </div>
+                    <button class="btn-primary" onclick="applyAdvancedFilters()">Aplikovat pokročilé filtry</button>
+                    <button class="btn-secondary" onclick="clearAdvancedFilters()">Vyčistit pokročilé filtry</button>
+                </div>
+
                 <div class="table-container">
                     <div class="table-wrapper">
                         <table id="dataTable">
@@ -568,14 +589,20 @@
                         <option value="doughnut">🍩 Prstencový</option>
                         <option value="scatter">☄️ Bodový</option>
                         <option value="boxplot">📦 Box Plot</option>
+                        <option value="combined">📊 Kombinovaný</option>
+                        <option value="bubble">⚪ Bublinový</option>
                     </select>
                     <select id="xAxis" onchange="updateChart()"><option>Vyberte...</option></select>
                     <select id="yAxis" onchange="updateChart()"><option>Vyberte...</option></select>
                 </div>
                 <div class="controls sub-controls" id="chartOptions">
-                    <label id="trendlineOption"><input type="checkbox" id="showTrendline" onchange="updateChart()"> Zobrazit trend</label>
-                    <label id="yAxis2Option"><input type="checkbox" id="enableYAxis2" onchange="updateChart()"> Druhá osa Y</label>
-                    <select id="yAxis2" onchange="updateChart()"></select>
+                    <label id="trendlineOption" style="display: none;"><input type="checkbox" id="showTrendline" onchange="updateChart()"> Zobrazit trend</label>
+                    <div id="yAxis2Control" style="display: none;">
+                        <label id="yAxis2Option"><input type="checkbox" id="enableYAxis2" onchange="updateChart()"> Druhá osa Y</label>
+                        <select id="yAxis2" onchange="updateChart()"></select>
+                    </div>
+                    <label id="zAxisOption" style="display: none;">Osa Z:</label>
+                    <select id="zAxis" onchange="updateChart()"></select>
                 </div>
                 <div class="chart-container">
                     <canvas id="mainChart"></canvas>
@@ -675,7 +702,7 @@
                     <!-- Nová sekce pro podmíněné formátování -->
                     <div class="tool-section">
                         <h4>🎨 Podmíněné zvýraznění dat</h4>
-                        <p>Vytvořte podmínku, která v grafu zvýrazní datové body, které ji splňují.</p>
+                        <p>Vytvořte podmínku, která v grafu a tabulce zvýrazní datové body, které ji splňují. </p>
                         <div class="controls">
                             <select id="conditionColumn"></select>
                             <select id="conditionOperator">
@@ -690,6 +717,37 @@
                             <button onclick="applyConditionalHighlighting()">Zvýraznit</button>
                         </div>
                         <p id="conditionalHighlightingMessage" style="color: var(--secondary-text-color); margin-top: 10px;"></p>
+                    </div>
+                     <!-- Nová sekce pro kontingenční tabulku -->
+                    <div class="tool-section">
+                        <h4>📈 Kontingenční tabulka</h4>
+                        <p>Vytvořte si souhrnný přehled dat. Vyberte sloupce pro řádky a hodnoty a aplikujte agregační funkci.</p>
+                        <div class="controls">
+                            <label for="pivotRows">Řádky:</label>
+                            <select id="pivotRows"></select>
+                            <label for="pivotValues">Hodnoty:</label>
+                            <select id="pivotValues"></select>
+                            <label for="pivotAggregate">Agregace:</label>
+                            <select id="pivotAggregate">
+                                <option value="count">Počet</option>
+                                <option value="sum">Součet</option>
+                                <option value="avg">Průměr</option>
+                                <option value="min">Minimum</option>
+                                <option value="max">Maximum</option>
+                            </select>
+                            <button onclick="generatePivotTable()">Vygenerovat</button>
+                        </div>
+                        <div id="pivotTableContainer" class="table-wrapper" style="margin-top: 20px;"></div>
+                    </div>
+                     <!-- Nová sekce pro statistickou analýzu -->
+                    <div class="tool-section">
+                        <h4>🧮 Statistická analýza</h4>
+                        <p>Vypočítejte klíčové statistické metriky pro vybraný číselný sloupec.</p>
+                        <div class="controls">
+                            <select id="statsColumn"></select>
+                            <button onclick="generateStats()">Vypočítat statistiky</button>
+                        </div>
+                        <div id="statsResultsContainer" style="margin-top: 20px;"></div>
                     </div>
                 </div>
             </div>
@@ -736,6 +794,8 @@
             <p><strong>Korelační matice:</strong> Tento nástroj vám ukáže, jak jsou na sobě závislé jednotlivé číselné sloupce. Zelená barva značí silnou přímou úměru, červená silnou nepřímou úměru.</p>
             <p><strong>Predikce a anomálie:</strong> Tato funkce vám ukáže predikci budoucího vývoje dat na základě lineární regrese. Zároveň se pokusí najít anomálie (odlehlé hodnoty) a vyznačí je přímo v grafu.</p>
             <p><strong>Podmíněné zvýraznění dat:</strong> Umožní vám zvýraznit datové body v grafu, které splňují vámi zvolenou podmínku, například "teplota je vyšší než 5°C".</p>
+            <p><strong>Kontingenční tabulka:</strong> Vytvořte si interaktivní souhrn dat, který se dynamicky přepočítává podle vybraných sloupců a agregačních funkcí.</p>
+            <p><strong>Statistická analýza:</strong> Získejte základní statistické parametry, jako je medián, rozptyl nebo směrodatná odchylka, pro libovolný číselný sloupec.</p>
 
             <h3>💾 Export</h3>
             <p>Stáhněte si aktuálně zobrazená (vyfiltrovaná) data ve formátu CSV nebo JSON. Můžete také exportovat úvodní přehled do PDF souboru.</p>
@@ -750,7 +810,8 @@
         let filterDebounceTimer = null;
         let chartDebounceTimer = null;
         let highlightedRows = []; // Nové pole pro uložení zvýrazněných řádků
-
+        let filters = [{}]; // Pole pro uložení pokročilých filtrů
+        
         // Set Chart.js to Czech locale
         Chart.defaults.locale = 'cs-CZ';
 
@@ -1191,6 +1252,9 @@
             updateAdvancedAnalytics();
             populatePredictionSelector();
             populateConditionalHighlightingSelectors();
+            populatePivotTableSelectors(); // Nová funkce pro kontingenční tabulky
+            populateStatsSelectors(); // Nová funkce pro statistiky
+            populateAdvancedFilterSelectors(); // Nová funkce pro pokročilé filtry
         }
         
         function getTemperatureColumn(data) {
@@ -1297,6 +1361,9 @@
             document.getElementById('searchInput').value = '';
             document.getElementById('startDate').value = '';
             document.getElementById('endDate').value = '';
+            // Reset advanced filters
+            filters = [{}];
+            document.getElementById('filter-controls').innerHTML = generateFilterControl(0);
             applyFilters();
         }
         
@@ -1332,17 +1399,32 @@
             
             const startDate = startDateInput.value ? new Date(startDateInput.value + 'T00:00:00') : null;
             const endDate = endDateInput.value ? new Date(endDateInput.value + 'T23:59:59') : null;
+            
+            // Collect advanced filter criteria
+            const activeFilters = filters.filter(f => f.column && f.value);
 
             setTimeout(() => {
                 data.filteredData = data.allData.filter(row => {
                     const textMatch = Object.values(row).some(val => val && val.toString().toLowerCase().includes(searchTerm));
                     const rowDate = row.dateObject;
-                    if (!startDate && !endDate) return textMatch;
-                    if (!rowDate) return false;
+                    const dateMatch = (!startDate && !endDate) || (rowDate && rowDate >= startDate && rowDate <= endDate);
                     
-                    const startMatch = !startDate || rowDate >= startDate;
-                    const endMatch = !endDate || rowDate <= endDate;
-                    return textMatch && startMatch && endMatch;
+                    const advancedFilterMatch = activeFilters.every(f => {
+                         const cellValue = String(row[f.column]).toLowerCase();
+                         const filterValue = String(f.value).toLowerCase();
+                         switch(f.operator) {
+                            case 'contains': return cellValue.includes(filterValue);
+                            case 'equals': return cellValue === filterValue;
+                            case '>': return parseFloat(cellValue) > parseFloat(filterValue);
+                            case '<': return parseFloat(cellValue) < parseFloat(filterValue);
+                            case '>=': return parseFloat(cellValue) >= parseFloat(filterValue);
+                            case '<=': return parseFloat(cellValue) <= parseFloat(filterValue);
+                            case '!=': return cellValue !== filterValue;
+                            default: return true;
+                         }
+                    });
+
+                    return textMatch && dateMatch && advancedFilterMatch;
                 });
                 currentPage = 1;
                 updateTable();
@@ -1383,16 +1465,16 @@
             let xOptions = '';
             if (dateCol) {
                 xOptions += `<optgroup label="Časová osa">`;
-                xOptions += `<option value="${dateCol}">${dateCol}</option>`;
+                xOptions += `<option value="${dateCol}">${dateCol}</option>`.replace(/°C/g, '°C');
                 xOptions += `</optgroup>`;
             }
             xOptions += `<optgroup label="Kategorie">`;
-            xOptions += categoricalCols.map(c => `<option value="${c}">${c}</option>`).join('');
+            xOptions += categoricalCols.map(c => `<option value="${c}">${c}</option>`.replace(/°C/g, '°C')).join('');
             xOptions += `</optgroup>`;
             xSelect.innerHTML = xOptions;
             
             // Y-Axis options
-            const yOptions = numericCols.map(c => `<option value="${c}">${c}</option>`).join('');
+            const yOptions = numericCols.map(c => `<option value="${c}">${c}</option>`.replace(/°C/g, '°C')).join('');
             ySelect.innerHTML = yOptions;
 
             // Pre-select meaningful columns
@@ -1490,44 +1572,64 @@
             const yAxisSelect = document.getElementById('yAxis');
             const yAxis2Select = document.getElementById('yAxis2');
             const trendlineOption = document.getElementById('trendlineOption');
-            const yAxis2Option = document.getElementById('yAxis2Option');
+            const yAxis2Control = document.getElementById('yAxis2Control');
+            const zAxisOption = document.getElementById('zAxisOption');
+            const zAxisSelect = document.getElementById('zAxis');
             
-            let xOptions = '', yOptions = '';
+            let xOptions = '', yOptions = '', zOptions = '';
             
             const dateCol = data.columns.find(c => c.toLowerCase().includes('datum') || c.toLowerCase().includes('logged'));
+            
+            const numericCols = data.numericColumns;
+            const categoricalCols = data.categoricalColumns;
 
-            if (['bar', 'line', 'area'].includes(chartType)) {
+
+            if (['bar', 'line', 'area', 'combined'].includes(chartType)) {
                 trendlineOption.style.display = 'inline-flex';
-                yAxis2Option.style.display = 'inline-flex';
-                yAxis2Select.style.display = 'inline-block';
             } else {
                 trendlineOption.style.display = 'none';
-                yAxis2Option.style.display = 'none';
+            }
+            
+            if (chartType === 'combined') {
+                yAxis2Control.style.display = 'inline-flex';
+                yAxis2Select.style.display = 'inline-block';
+            } else {
+                yAxis2Control.style.display = 'none';
                 yAxis2Select.style.display = 'none';
             }
 
-            if(chartType === 'boxplot') {
-                xOptions = data.categoricalColumns.map(c => `<option value="${c}">${c}</option>`).join('');
-                yOptions = data.numericColumns.map(c => `<option value="${c}">${c}</option>`).join('');
+            if (chartType === 'bubble') {
+                zAxisOption.style.display = 'inline-flex';
+                zAxisSelect.style.display = 'inline-block';
                 trendlineOption.style.display = 'none';
-                yAxis2Option.style.display = 'none';
-                yAxis2Select.style.display = 'none';
+            } else {
+                 zAxisOption.style.display = 'none';
+                 zAxisSelect.style.display = 'none';
+            }
+
+            if(chartType === 'boxplot') {
+                xOptions = categoricalCols.map(c => `<option value="${c}">${c}</option>`).join('');
+                yOptions = numericCols.map(c => `<option value="${c}">${c}</option>`).join('');
+                trendlineOption.style.display = 'none';
+                yAxis2Control.style.display = 'none';
             } else if (['pie', 'doughnut'].includes(chartType)) {
-                xOptions = data.categoricalColumns.map(c => `<option value="${c}">${c}</option>`).join('');
-                yOptions = data.numericColumns.map(c => `<option value="${c}">${c}</option>`).join('');
-            } else if (chartType === 'scatter') {
-                xOptions = data.numericColumns.map(c => `<option value="${c}">${c}</option>`).join('');
-                yOptions = data.numericColumns.map(c => `<option value="${c}">${c}</option>`).join('');
-            } else { // line, bar, area
-                let allXOptions = [...data.categoricalColumns];
+                xOptions = categoricalCols.map(c => `<option value="${c}">${c}</option>`).join('');
+                yOptions = numericCols.map(c => `<option value="${c}">${c}</option>`).join('');
+            } else if (['scatter', 'bubble'].includes(chartType)) {
+                xOptions = numericCols.map(c => `<option value="${c}">${c}</option>`).join('');
+                yOptions = numericCols.map(c => `<option value="${c}">${c}</option>`).join('');
+                zOptions = numericCols.map(c => `<option value="${c}">${c}</option>`).join('');
+            } else { // line, bar, area, combined
+                let allXOptions = [...categoricalCols];
                 if(dateCol) allXOptions.unshift(dateCol);
                 xOptions = allXOptions.map(c => `<option value="${c}">${c}</option>`).join('');
-                yOptions = data.numericColumns.map(c => `<option value="${c}">${c}</option>`).join('');
+                yOptions = numericCols.map(c => `<option value="${c}">${c}</option>`).join('');
             }
             
             xAxisSelect.innerHTML = xOptions;
             yAxisSelect.innerHTML = yOptions;
             yAxis2Select.innerHTML = yOptions;
+            zAxisSelect.innerHTML = zOptions;
             updateChart();
         }
 
@@ -1582,11 +1684,18 @@
             const showTrendline = document.getElementById('showTrendline').checked;
             const enableY2 = document.getElementById('enableYAxis2').checked;
             const yCol2 = document.getElementById('yAxis2').value;
+            const zCol = document.getElementById('zAxis').value;
 
             if (!xCol || !yCol) {
                 const chartContainer = document.querySelector('#charts .chart-container');
                 if (chartContainer) chartContainer.style.opacity = '1';
                 return;
+            }
+            
+            if (chartType === 'bubble' && !zCol) {
+                 showMessage('❌ Pro bublinový graf je nutné vybrat X, Y a Z sloupce.', 'error');
+                 if (mainChartInstance) mainChartInstance.destroy();
+                 return;
             }
 
             let labels, datasets;
@@ -1632,7 +1741,22 @@
                     x: { ticks: { color: getChartColors().textColor }, grid: { color: getChartColors().gridColor } },
                     y: { ticks: { color: getChartColors().textColor }, grid: { color: getChartColors().gridColor } }
                 };
-
+            } else if (chartType === 'bubble') {
+                 const bubbleData = chartData.map(row => ({
+                    x: parseFloat(String(row[xCol])),
+                    y: parseFloat(String(row[yCol])),
+                    r: parseFloat(String(row[zCol]))
+                 })).filter(p => !isNaN(p.x) && !isNaN(p.y) && !isNaN(p.r));
+                 
+                 datasets = [{
+                    label: `${xCol} vs ${yCol} (Velikost bubliny: ${zCol})`,
+                    data: bubbleData,
+                    backgroundColor: getCssVariable('--primary-color') + '80',
+                 }];
+                 chartOptions.scales = {
+                    x: { ticks: { color: getChartColors().textColor }, grid: { color: getChartColors().gridColor } },
+                    y: { ticks: { color: getChartColors().textColor }, grid: { color: getChartColors().gridColor } }
+                 };
             } else {
                 let values;
                 if (['pie', 'doughnut'].includes(chartType)) {
@@ -1653,6 +1777,8 @@
                 }
                 
                 const isAreaOrLine = ['line', 'area'].includes(chartType);
+                const baseChartType = chartType === 'combined' ? 'bar' : (chartType === 'area' ? 'line' : chartType);
+                
                 datasets = [{
                     label: `${yCol} podle ${xCol}`,
                     data: values,
@@ -1660,7 +1786,8 @@
                     borderColor: getCssVariable('--primary-color'),
                     fill: isAreaOrLine,
                     tension: 0.1,
-                    yAxisID: 'y'
+                    yAxisID: 'y',
+                    type: chartType === 'combined' ? 'line' : baseChartType,
                 }];
 
                 if (showTrendline && (chartType === 'line' || chartType === 'scatter' || chartType === 'area')) {
@@ -1682,25 +1809,24 @@
                     }
                 }
 
-                if (enableY2 && yCol2 && ['line', 'bar', 'area'].includes(chartType)) {
+                if (enableY2 && yCol2 && chartType === 'combined') {
                     const values2 = chartData.map(r => parseFloat(String(r[yCol2])));
                     datasets.push({
                         label: `${yCol2} podle ${xCol}`,
                         data: values2,
                         borderColor: getCssVariable('--color-analytics'),
                         backgroundColor: getCssVariable('--color-analytics') + '80',
-                        type: 'line',
-                        fill: false,
+                        type: 'bar',
                         yAxisID: 'y1'
                     });
                 }
                 
-                if (chartType !== 'pie' && chartType !== 'doughnut') {
+                if (chartType !== 'pie' && chartType !== 'doughnut' && chartType !== 'bubble') {
                     chartOptions.scales = {
                         x: { type: isTimeSeries ? 'time' : 'category', ticks: { color: getChartColors().textColor }, grid: { color: getChartColors().gridColor } },
                         y: { type: 'linear', display: true, position: 'left', ticks: { color: getChartColors().textColor }, grid: { color: getChartColors().gridColor } }
                     };
-                    if (enableY2 && yCol2) {
+                    if (enableY2 && yCol2 && chartType === 'combined') {
                         chartOptions.scales.y1 = {
                             type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false },
                             ticks: { color: getCssVariable('--color-analytics') }
@@ -1714,6 +1840,8 @@
             let finalChartType = chartType;
             if (chartType === 'area') finalChartType = 'line';
             if (chartType === 'boxplot') finalChartType = 'boxplot';
+            if (chartType === 'combined') finalChartType = 'bar'; // Default base chart type for combined
+            if (chartType === 'bubble') finalChartType = 'bubble';
 
             mainChartInstance = new Chart(ctx, {
                 type: finalChartType,
@@ -1739,6 +1867,8 @@
             } else if (tabName === 'tools') {
                 populatePredictionSelector();
                 populateConditionalHighlightingSelectors();
+                populatePivotTableSelectors();
+                populateStatsSelectors();
             } else if (tabName === 'table') {
                 updateTable();
             }
@@ -1843,7 +1973,7 @@
                         responsive: true,
                         maintainAspectRatio: false,
                         scales: {
-                            x: { type: 'time', time: { unit: 'day' }, ticks: { color: chartColors.textColor }, grid: { color: chartColors.gridColor } },
+                            x: { type: 'time', time: { unit: 'day' } },
                             y: { ticks: { color: chartColors.textColor }, grid: { color: chartColors.gridColor } }
                         },
                         plugins: { legend: { labels: { color: chartColors.textColor } } }
@@ -1896,9 +2026,9 @@
                 
                 if (temps.length > 0) {
                     tempStatsHtml = `
-                        <p><strong>Průměr:</strong> ${(temps.map(t=>t.value).reduce((a, b) => a + b, 0) / temps.length).toFixed(2)}°C</p>
-                        <p><strong>Minimum:</strong> ${Math.min(...temps.map(t=>t.value)).toFixed(2)}°C</p>
-                        <p><strong>Maximum:</strong> ${Math.max(...temps.map(t=>t.value)).toFixed(2)}°C</p>
+                        <p><strong>Průměr:</strong> ${(temps.map(t=>t.value).reduce((a, b) => a + b, 0) / temps.length).toFixed(1)}°C</p>
+                        <p><strong>Minimum:</strong> ${Math.min(...temps.map(t=>t.value)).toFixed(1)}°C</p>
+                        <p><strong>Maximum:</strong> ${Math.max(...temps.map(t=>t.value)).toFixed(1)}°C</p>
                     `;
                     const safeTemp = -18;
                     let outOfRangeMillis = 0;
@@ -2413,7 +2543,6 @@
                 return;
             }
             
-            // 1. Zjistit, které řádky splňují podmínku
             highlightedRows = data.filteredData.filter(row => {
                 const cellValue = parseFloat(row[column]);
                 if (isNaN(cellValue)) return false;
@@ -2429,28 +2558,18 @@
                 }
             });
             
-            // 2. Přepnout na záložku tabulky a aktualizovat zobrazení
             switchTab('table');
-            // updateTable() se volá automaticky při přepnutí záložky, ale pro jistotu
             updateTable();
 
-            // 3. Vytvořit dodatečný dataset pro graf na záložce 'Charts'
-            // Tato část se přesune do renderChartNow, ale potřebujeme data
             const xCol = document.getElementById('xAxis').value;
             const yCol = document.getElementById('yAxis').value;
 
-            if (!xCol || !yCol) {
-                // If chart is not set up, just highlight table and show a message
-                showMessage(`✅ Zvýrazněno ${highlightedRows.length} řádků v tabulce, které splňují podmínku: ${column} ${operator} ${valueInput}.`, 'success');
-                return;
+            if (xCol && yCol) {
+                 renderChartWithHighlighting(column, operator, valueInput);
             }
-            
-            // Tady musíme graf vygenerovat znovu, aby se promítly změny
-            renderChartWithHighlighting(column, operator, valueInput);
 
-            document.getElementById('conditionalHighlightingMessage').textContent = `✅ Zvýrazněno ${highlightedRows.length} řádků v tabulce a bodech v grafu, které splňují podmínku: ${column} ${operator} ${valueInput}.`;
-            showMessage(`✅ Zvýrazněno ${highlightedRows.length} řádků v tabulce. Přejděte na záložku "Grafy" pro vizualizaci.`, 'success');
-
+            document.getElementById('conditionalHighlightingMessage').textContent = `✅ Zvýrazněno ${highlightedRows.length} řádků v tabulce. Přejděte na záložku "Grafy" pro vizualizaci.`;
+            showMessage(`✅ Zvýrazněno ${highlightedRows.length} řádků v tabulce.`, 'success');
         }
 
         function renderChartWithHighlighting(conditionColumn, conditionOperator, conditionValue) {
@@ -2469,13 +2588,8 @@
             const dateColName = data.columns.find(c => c.toLowerCase().includes('datum') || c.toLowerCase().includes('logged'));
             const isTimeSeries = xCol === dateColName;
 
-            // Destroy existing chart instance
             if (mainChartInstance) mainChartInstance.destroy();
             
-            // Generate datasets based on the condition
-            let labels, mainDataPoints, highlightDataPoints;
-            
-            // Helper function to check condition
             const checkCondition = (row) => {
                 const cellValue = parseFloat(row[conditionColumn]);
                 if (isNaN(cellValue)) return false;
@@ -2491,27 +2605,34 @@
                 }
             };
             
-            labels = chartData.map(r => isTimeSeries ? r.dateObject : r[xCol]);
-            mainDataPoints = chartData.map((r, index) => {
-                return {
-                    x: isTimeSeries ? r.dateObject : r[xCol],
-                    y: parseFloat(String(r[yCol])),
-                    highlight: checkCondition(r)
-                };
+            const nonHighlightedPoints = [];
+            const highlightedPoints = [];
+            const labels = [];
+            
+            chartData.forEach(row => {
+                const xValue = isTimeSeries ? row.dateObject : row[xCol];
+                const yValue = parseFloat(String(row[yCol]));
+                labels.push(xValue);
+
+                if (checkCondition(row)) {
+                    highlightedPoints.push({ x: xValue, y: yValue });
+                } else {
+                    nonHighlightedPoints.push({ x: xValue, y: yValue });
+                }
             });
             
             const datasets = [{
                 label: yCol,
-                data: mainDataPoints.filter(p => !p.highlight).map(p => ({ x: p.x, y: p.y })),
+                data: nonHighlightedPoints,
                 borderColor: getCssVariable('--primary-color'),
                 backgroundColor: getCssVariable('--primary-color') + '20',
                 fill: false,
                 tension: 0.1,
                 pointRadius: 2,
-                type: 'line', // For non-time-series, might need to adjust
+                type: 'line',
             }, {
                 label: `Zvýrazněno: ${conditionColumn} ${conditionOperator} ${conditionValue}`,
-                data: mainDataPoints.filter(p => p.highlight).map(p => ({ x: p.x, y: p.y })),
+                data: highlightedPoints,
                 borderColor: getCssVariable('--danger-color'),
                 backgroundColor: getCssVariable('--danger-color'),
                 fill: false,
@@ -2523,9 +2644,9 @@
             }];
 
             if (showTrendline) {
-                const trendData = mainDataPoints.map((p, i) => ({
-                    x: isTimeSeries ? p.x.getTime() : i,
-                    y: p.y
+                const trendData = chartData.map((row, i) => ({
+                    x: isTimeSeries ? row.dateObject.getTime() : i,
+                    y: parseFloat(String(row[yCol]))
                 })).filter(p => p.x != null && !isNaN(p.x) && !isNaN(p.y));
 
                 if (trendData.length > 1) {
@@ -2540,11 +2661,10 @@
                     });
                 }
             }
-
-            // Create the new chart
+            
             mainChartInstance = new Chart(ctx, {
                 type: chartType,
-                data: { labels, datasets },
+                data: { labels: labels, datasets: datasets },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
@@ -2557,6 +2677,200 @@
                     }
                 }
             });
+        }
+        
+        // --- Pivot Table Functionality ---
+        function populatePivotTableSelectors() {
+            const data = getCurrentData();
+            if (!data) return;
+            const pivotRowsSelect = document.getElementById('pivotRows');
+            const pivotValuesSelect = document.getElementById('pivotValues');
+
+            const allCols = data.columns;
+            const numericCols = data.numericColumns;
+
+            const rowOptions = allCols.map(c => `<option value="${c}">${c}</option>`).join('');
+            pivotRowsSelect.innerHTML = rowOptions;
+
+            const valueOptions = numericCols.map(c => `<option value="${c}">${c}</option>`).join('');
+            pivotValuesSelect.innerHTML = valueOptions;
+        }
+
+        function generatePivotTable() {
+            const data = getCurrentData();
+            if (!data) {
+                showMessage('❌ Nejprve nahrajte data.', 'error');
+                return;
+            }
+
+            const rowCol = document.getElementById('pivotRows').value;
+            const valueCol = document.getElementById('pivotValues').value;
+            const aggregateFunc = document.getElementById('pivotAggregate').value;
+
+            if (!rowCol || !valueCol) {
+                showMessage('❌ Vyberte sloupce pro řádky a hodnoty.', 'error');
+                return;
+            }
+
+            const pivotData = {};
+            data.allData.forEach(row => {
+                const key = row[rowCol] || 'N/A';
+                const value = parseFloat(String(row[valueCol]));
+                if (!isNaN(value)) {
+                    if (!pivotData[key]) {
+                        pivotData[key] = [];
+                    }
+                    pivotData[key].push(value);
+                }
+            });
+
+            let html = '<table class="summary-table"><thead><tr><th>' + rowCol + '</th><th>' + aggregateFunc + ' ' + valueCol + '</th></tr></thead><tbody>';
+
+            Object.entries(pivotData).forEach(([key, values]) => {
+                let result;
+                switch (aggregateFunc) {
+                    case 'count': result = values.length; break;
+                    case 'sum': result = values.reduce((a, b) => a + b, 0); break;
+                    case 'avg': result = (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2); break;
+                    case 'min': result = Math.min(...values); break;
+                    case 'max': result = Math.max(...values); break;
+                    default: result = values.length;
+                }
+                html += `<tr><td>${key}</td><td>${result}</td></tr>`;
+            });
+            
+            html += '</tbody></table>';
+            document.getElementById('pivotTableContainer').innerHTML = html;
+        }
+        
+        // --- Nová statistická analýza ---
+        function populateStatsSelectors() {
+            const data = getCurrentData();
+            if (!data) return;
+            const select = document.getElementById('statsColumn');
+            const numericCols = data.numericColumns;
+            const options = numericCols.map(c => `<option value="${c}">${c}</option>`).join('');
+            select.innerHTML = options;
+        }
+
+        function generateStats() {
+            const data = getCurrentData();
+            if (!data) {
+                showMessage('❌ Nejprve nahrajte data.', 'error');
+                return;
+            }
+            const column = document.getElementById('statsColumn').value;
+            if (!column) {
+                showMessage('❌ Vyberte číselný sloupec pro analýzu.', 'error');
+                return;
+            }
+            
+            const values = data.allData.map(row => parseFloat(row[column])).filter(v => !isNaN(v));
+            if (values.length === 0) {
+                 document.getElementById('statsResultsContainer').innerHTML = `<div class="message error">Žádná platná číselná data pro analýzu.</div>`;
+                 return;
+            }
+            
+            const sum = values.reduce((a, b) => a + b, 0);
+            const mean = sum / values.length;
+            const sorted = values.slice().sort((a, b) => a - b);
+            const median = sorted.length % 2 === 0
+                ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2
+                : sorted[Math.floor(sorted.length / 2)];
+            
+            const variance = values.map(v => (v - mean) ** 2).reduce((a, b) => a + b, 0) / values.length;
+            const stdDev = Math.sqrt(variance);
+
+            let html = `
+                <div style="background: var(--bg-color); padding: 20px; border-radius: 8px;">
+                    <h4>Statistiky pro sloupec "${column}"</h4>
+                    <p><strong>Počet hodnot:</strong> ${values.length}</p>
+                    <p><strong>Průměr:</strong> ${mean.toFixed(2)}</p>
+                    <p><strong>Medián:</strong> ${median.toFixed(2)}</p>
+                    <p><strong>Minimální hodnota:</strong> ${Math.min(...values).toFixed(2)}</p>
+                    <p><strong>Maximální hodnota:</strong> ${Math.max(...values).toFixed(2)}</p>
+                    <p><strong>Rozptyl:</strong> ${variance.toFixed(2)}</p>
+                    <p><strong>Směrodatná odchylka:</strong> ${stdDev.toFixed(2)}</p>
+                </div>
+            `;
+            document.getElementById('statsResultsContainer').innerHTML = html;
+        }
+
+        // --- Nová funkcionalita: Pokročilé filtrování a řazení ---
+        let filterCount = 1;
+
+        function populateAdvancedFilterSelectors() {
+            const data = getCurrentData();
+            if (!data) return;
+            const filterControlsContainer = document.getElementById('filter-controls');
+            filterControlsContainer.innerHTML = '';
+            filters.forEach((filter, index) => {
+                filterControlsContainer.innerHTML += generateFilterControl(index);
+                const select = document.getElementById(`filterColumn-${index}`);
+                const options = data.columns.map(c => `<option value="${c}">${c}</option>`).join('');
+                select.innerHTML = options;
+                select.value = filter.column || '';
+                document.getElementById(`filterOperator-${index}`).value = filter.operator || 'contains';
+                document.getElementById(`filterValue-${index}`).value = filter.value || '';
+            });
+            // Update the filter count after populating
+            filterCount = filters.length;
+        }
+
+        function generateFilterControl(index) {
+             const data = getCurrentData();
+             if (!data) return '';
+             const columnOptions = data.columns.map(c => `<option value="${c}">${c}</option>`).join('');
+             return `
+                <div class="controls" id="filter-row-${index}">
+                    <select id="filterColumn-${index}">${columnOptions}</select>
+                    <select id="filterOperator-${index}">
+                        <option value="contains">Obsahuje</option>
+                        <option value="equals">=</option>
+                        <option value=">">></option>
+                        <option value="<"><</option>
+                        <option value=">=">>=</option>
+                        <option value="<="><=</option>
+                        <option value="!=">!=</option>
+                    </select>
+                    <input type="text" id="filterValue-${index}" placeholder="Hodnota...">
+                    <button onclick="removeFilter(${index})">-</button>
+                </div>
+             `;
+        }
+
+        function addFilter() {
+            const data = getCurrentData();
+            if (!data) return;
+            const newFilter = {};
+            filters.push(newFilter);
+            const filterControlsContainer = document.getElementById('filter-controls');
+            filterControlsContainer.innerHTML += generateFilterControl(filters.length - 1);
+            populateAdvancedFilterSelectors();
+        }
+
+        function removeFilter(index) {
+            filters.splice(index, 1);
+            populateAdvancedFilterSelectors();
+        }
+
+        function applyAdvancedFilters() {
+            filters = [];
+            const filterRows = document.getElementById('filter-controls').querySelectorAll('.controls');
+            filterRows.forEach(row => {
+                const index = row.id.split('-')[2];
+                const column = document.getElementById(`filterColumn-${index}`).value;
+                const operator = document.getElementById(`filterOperator-${index}`).value;
+                const value = document.getElementById(`filterValue-${index}`).value;
+                filters.push({ column, operator, value });
+            });
+            applyFilters();
+        }
+
+        function clearAdvancedFilters() {
+             filters = [{}];
+             populateAdvancedFilterSelectors();
+             applyFilters();
         }
 
 
@@ -2649,6 +2963,7 @@
                 animation: 150,
                 ghostClass: 'sortable-ghost'
             });
+             populateAdvancedFilterSelectors(); // Inicializace pokročilých filtrů
         });
         window.addEventListener('error', e => showMessage(`❌ Nastala chyba: ${e.message || 'Neznámá chyba'}`, 'error'));
     </script>
