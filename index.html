@@ -11,6 +11,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.1.2/dist/chartjs-plugin-annotation.min.js"></script>
     <style>
         :root {
             --bg-color: #f2f2f7;
@@ -37,6 +38,10 @@
             --color-cleaning: #FF2D55;
             --color-tools: #5856D6;
             --color-export: #8E8E93;
+
+            --color-forecast: #FFCC00;
+            --color-anomaly: #FF3B30;
+            --highlight-color: #ffc10740; /* Nová proměnná pro barvu zvýraznění */
         }
 
         .dark-mode {
@@ -63,6 +68,10 @@
             --color-cleaning: #FF375F;
             --color-tools: #5E5CE6;
             --color-export: #98989D;
+
+            --color-forecast: #FFD426;
+            --color-anomaly: #FF453A;
+            --highlight-color: #ffc10740; /* Nová proměnná pro barvu zvýraznění */
         }
 
         * {
@@ -306,6 +315,7 @@
         th { background: var(--container-bg); color: var(--secondary-text-color); font-weight: 600; position: sticky; top: 0; text-transform: uppercase; font-size: 0.8em; }
         tr:last-child td { border-bottom: none; }
         tr:hover { background: var(--tab-bg); }
+        tr.highlighted-row { background-color: var(--highlight-color) !important; }
         .table-wrapper { border: 1px solid var(--border-color); border-radius: var(--radius); max-height: 60vh; overflow-y: auto;}
         
         .pagination { display: flex; justify-content: center; gap: 10px; margin-top: 20px; }
@@ -509,6 +519,12 @@
                     </div>
                      <div class="widget" id="widget-main-chart">
                         <h3>Hlavní graf</h3>
+                        <div class="controls sub-controls" style="margin-bottom: 20px;">
+                            <label for="overviewChartX">Osa X:</label>
+                            <select id="overviewChartX" onchange="renderOverviewChart()"></select>
+                            <label for="overviewChartY">Osa Y:</label>
+                            <select id="overviewChartY" onchange="renderOverviewChart()"></select>
+                        </div>
                         <div class="chart-container">
                            <canvas id="overviewChart"></canvas>
                         </div>
@@ -645,6 +661,36 @@
                          </div>
                         <div id="correlationMatrixContainer" class="table-wrapper" style="overflow-x: auto;"></div>
                     </div>
+                    <div class="tool-section">
+                        <h4>🔮 Predikce a anomálie</h4>
+                        <p>Aplikace se pokusí najít anomálie a predikovat budoucí data na základě historických trendů.</p>
+                        <div class="controls">
+                            <select id="predictionColumn"></select>
+                            <button onclick="runPredictionAndAnomalyDetection()">Spustit analýzu</button>
+                        </div>
+                        <div id="predictionChartContainer" class="chart-container" style="height: 400px; display:none;">
+                            <canvas id="predictionChart"></canvas>
+                        </div>
+                    </div>
+                    <!-- Nová sekce pro podmíněné formátování -->
+                    <div class="tool-section">
+                        <h4>🎨 Podmíněné zvýraznění dat</h4>
+                        <p>Vytvořte podmínku, která v grafu zvýrazní datové body, které ji splňují.</p>
+                        <div class="controls">
+                            <select id="conditionColumn"></select>
+                            <select id="conditionOperator">
+                                <option value="=">=</option>
+                                <option value=">">></option>
+                                <option value="<"><</option>
+                                <option value=">=">>=</option>
+                                <option value="<="><=</option>
+                                <option value="!=">!=</option>
+                            </select>
+                            <input type="text" id="conditionValue" placeholder="Hodnota...">
+                            <button onclick="applyConditionalHighlighting()">Zvýraznit</button>
+                        </div>
+                        <p id="conditionalHighlightingMessage" style="color: var(--secondary-text-color); margin-top: 10px;"></p>
+                    </div>
                 </div>
             </div>
 
@@ -688,6 +734,8 @@
             <h3>🛠️ Pokročilé Nástroje</h3>
             <p><strong>Počítané sloupce:</strong> Vytvořte si vlastní datový sloupec pomocí matematického vzorce. Například pokud máte sloupce [Cena] a [Počet], můžete vytvořit sloupec 'Tržba' se vzorcem <code>[Cena] * [Počet]</code>.</p>
             <p><strong>Korelační matice:</strong> Tento nástroj vám ukáže, jak jsou na sobě závislé jednotlivé číselné sloupce. Zelená barva značí silnou přímou úměru, červená silnou nepřímou úměru.</p>
+            <p><strong>Predikce a anomálie:</strong> Tato funkce vám ukáže predikci budoucího vývoje dat na základě lineární regrese. Zároveň se pokusí najít anomálie (odlehlé hodnoty) a vyznačí je přímo v grafu.</p>
+            <p><strong>Podmíněné zvýraznění dat:</strong> Umožní vám zvýraznit datové body v grafu, které splňují vámi zvolenou podmínku, například "teplota je vyšší než 5°C".</p>
 
             <h3>💾 Export</h3>
             <p>Stáhněte si aktuálně zobrazená (vyfiltrovaná) data ve formátu CSV nebo JSON. Můžete také exportovat úvodní přehled do PDF souboru.</p>
@@ -701,6 +749,7 @@
         let currentPage = 1, itemsPerPage = 50, mainChartInstance = null, overviewChartInstance = null, predictionChartInstance = null, comparisonChartInstance = null;
         let filterDebounceTimer = null;
         let chartDebounceTimer = null;
+        let highlightedRows = []; // Nové pole pro uložení zvýrazněných řádků
 
         // Set Chart.js to Czech locale
         Chart.defaults.locale = 'cs-CZ';
@@ -956,7 +1005,7 @@
                 let columns = allDataRaw.length > 0 ? Object.keys(allDataRaw[0]) : [];
                 
                 if (allDataRaw.length < 10) {
-                    if (!confirm(`Soubor obsahuje pouze ${allDataRaw.length} řádků. Chcete pokračovat?`)) {
+                    if (!confirm('Soubor obsahuje pouze ' + allDataRaw.length + ' řádků. Chcete pokračovat?')) {
                         hideLoading();
                         const uploadZone = document.querySelector(`.upload-zone[data-index="${index}"]`);
                         uploadZone.classList.remove('loaded');
@@ -1131,6 +1180,7 @@
         function updateAllVisuals() {
             if (!getCurrentData()) return;
             updateStats();
+            populateOverviewChartSelectors();
             renderOverviewChart();
             updateChartUI();
             updateDataInfo();
@@ -1139,10 +1189,12 @@
             populateCleaningSelects();
             applyFilters();
             updateAdvancedAnalytics();
+            populatePredictionSelector();
+            populateConditionalHighlightingSelectors();
         }
         
         function getTemperatureColumn(data) {
-            const preferredColumns = ['Return [°C]', 'Supply [°C]'];
+            const preferredColumns = ['Prostor (Pb1) °C', 'Výparník (Pb2) °C', 'Return [°C]', 'Supply [°C]'];
             for (const pCol of preferredColumns) {
                 const foundCol = data.columns.find(c => c.trim() === pCol);
                 if (foundCol) return foundCol;
@@ -1167,9 +1219,9 @@
                         stats.push({ title: `${Math.max(...temps).toFixed(1)}°C`, subtitle: 'Max. teplota' });
                     }
                 }
-                const defrostCol = data.columns.find(c => c.toLowerCase().includes('defrosting'));
+                const defrostCol = data.columns.find(c => c.toLowerCase().includes('odtávání') || c.toLowerCase().includes('defrosting'));
                 if (defrostCol) {
-                     stats.push({ title: data.allData.filter(r => String(r[defrostCol]).toLowerCase() === 'true').length, subtitle: 'Odmrazovací cykly' });
+                     stats.push({ title: data.allData.filter(r => String(r[defrostCol]).toLowerCase().includes('aktivní')).length, subtitle: 'Odmrazovací cykly' });
                 }
             } else if (data.currentMode === 'sensor') {
                 const validData = data.allData.filter(d => (d.stateCode === '1' || d.Status === '1') && d.sensor !== '0');
@@ -1207,7 +1259,14 @@
             tableHead.innerHTML = '<tr>' + visibleCols.map(col => `<th>${col}</th>`).join('') + '</tr>';
             const startIndex = (currentPage - 1) * itemsPerPage;
             const pageData = data.filteredData.slice(startIndex, startIndex + itemsPerPage);
-            tableBody.innerHTML = pageData.map(row => '<tr>' + visibleCols.map(col => `<td>${row[col] === null || row[col] === undefined ? '' : row[col]}</td>`).join('') + '</tr>').join('');
+            
+            // Nová logika pro aplikaci zvýraznění na řádky
+            tableBody.innerHTML = pageData.map(row => {
+                const isHighlighted = highlightedRows.includes(row);
+                const rowClass = isHighlighted ? 'highlighted-row' : '';
+                return `<tr class="${rowClass}">` + visibleCols.map(col => `<td>${row[col] === null || row[col] === undefined ? '' : row[col]}</td>`).join('') + '</tr>';
+            }).join('');
+
             updatePagination();
         }
 
@@ -1307,51 +1366,94 @@
                 switchTab('table');
             }
         }
+
+        // Nové funkce pro interaktivní dashboard
+        function populateOverviewChartSelectors() {
+            const data = getCurrentData();
+            if (!data) return;
+
+            const xSelect = document.getElementById('overviewChartX');
+            const ySelect = document.getElementById('overviewChartY');
+
+            const dateCol = data.columns.find(c => c.toLowerCase().includes('datum') || c.toLowerCase().includes('logged'));
+            const numericCols = data.numericColumns;
+            const categoricalCols = data.categoricalColumns;
+
+            // X-Axis options
+            let xOptions = '';
+            if (dateCol) {
+                xOptions += `<optgroup label="Časová osa">`;
+                xOptions += `<option value="${dateCol}">${dateCol}</option>`;
+                xOptions += `</optgroup>`;
+            }
+            xOptions += `<optgroup label="Kategorie">`;
+            xOptions += categoricalCols.map(c => `<option value="${c}">${c}</option>`).join('');
+            xOptions += `</optgroup>`;
+            xSelect.innerHTML = xOptions;
+            
+            // Y-Axis options
+            const yOptions = numericCols.map(c => `<option value="${c}">${c}</option>`).join('');
+            ySelect.innerHTML = yOptions;
+
+            // Pre-select meaningful columns
+            if (dateCol) {
+                xSelect.value = dateCol;
+            } else if (categoricalCols.length > 0) {
+                xSelect.value = categoricalCols[0];
+            }
+
+            if (numericCols.length > 0) {
+                ySelect.value = numericCols[0];
+            }
+        }
         
         function renderOverviewChart() {
             const data = getCurrentData();
             if (!data) return;
 
             const ctx = document.getElementById('overviewChart').getContext('2d');
+            const xCol = document.getElementById('overviewChartX').value;
+            const yCol = document.getElementById('overviewChartY').value;
+
+            if (!xCol || !yCol) {
+                if (overviewChartInstance) overviewChartInstance.destroy();
+                return;
+            }
+
             let chartData, chartOptions, chartType;
+            const isTimeSeries = data.columns.find(c => c.toLowerCase().includes('datum') || c.toLowerCase().includes('logged')) === xCol;
+            const chartDataPoints = data.allData.filter(row => row[yCol] != null && (isTimeSeries ? row.dateObject : true));
 
-            if (data.currentMode === 'refrigeration') {
-                const tempCol = getTemperatureColumn(data);
-                const dateCol = data.columns.find(c => c.toLowerCase().includes('datum') || c.toLowerCase().includes('logged'));
-                if (!tempCol || !dateCol) return;
-                
+            if (isTimeSeries) {
                 chartType = 'line';
-                const plotData = data.allData.filter(r => r.dateObject);
-
                 chartData = {
-                    labels: plotData.map(r => r.dateObject),
+                    labels: chartDataPoints.map(r => r.dateObject),
                     datasets: [{
-                        label: `Teplota (${tempCol})`,
-                        data: plotData.map(r => parseFloat(String(r[tempCol]))),
+                        label: `${yCol}`,
+                        data: chartDataPoints.map(r => parseFloat(String(r[yCol]))),
                         borderColor: getCssVariable('--primary-color'),
-                        backgroundColor: getCssVariable('--primary-color') + '20', // Add transparency
+                        backgroundColor: getCssVariable('--primary-color') + '20',
                         fill: true,
                         tension: 0.2,
                         pointRadius: 0,
                     }]
                 };
-                 chartOptions = { scales: { x: { type: 'time', time: { unit: 'day' } } } };
+                chartOptions = { scales: { x: { type: 'time', time: { unit: 'day' } } } };
             } else {
-                const categorical = data.categoricalColumns[0];
-                const numerical = data.numericColumns[0];
-                if (!categorical || !numerical) return;
-                
                 chartType = 'bar';
-                const aggregatedData = data.allData.reduce((acc, row) => {
-                    const category = row[categorical] || 'N/A';
-                    acc[category] = (acc[category] || 0) + parseFloat(String(row[numerical]));
+                const aggregatedData = chartDataPoints.reduce((acc, row) => {
+                    const category = row[xCol] || 'N/A';
+                    const value = parseFloat(String(row[yCol]));
+                    if (!isNaN(value)) {
+                       acc[category] = (acc[category] || 0) + value;
+                    }
                     return acc;
                 }, {});
 
                 chartData = {
                     labels: Object.keys(aggregatedData),
                     datasets: [{
-                        label: `Součet ${numerical} podle ${categorical}`,
+                        label: `Součet ${yCol} podle ${xCol}`,
                         data: Object.values(aggregatedData),
                         backgroundColor: getCssVariable('--primary-color'),
                     }]
@@ -1379,7 +1481,7 @@
                 }
             });
         }
-
+        
         function updateChartUI() {
             const data = getCurrentData();
             if (!data) return;
@@ -1634,6 +1736,11 @@
                 updateComparisonView();
             } else if (tabName === 'cleaning') {
                 populateCleaningSelects();
+            } else if (tabName === 'tools') {
+                populatePredictionSelector();
+                populateConditionalHighlightingSelectors();
+            } else if (tabName === 'table') {
+                updateTable();
             }
         }
         
@@ -1776,7 +1883,7 @@
         function generateRefrigerationAnalytics(tempCol) {
             const data = getCurrentData();
             const alarmCol = data.columns.find(c => c.toLowerCase().includes('alarm'));
-            const defrostCol = data.columns.find(c => c.toLowerCase().includes('defrosting'));
+            const defrostCol = data.columns.find(c => c.toLowerCase().includes('odtávání') || c.toLowerCase().includes('defrosting'));
             
             let tempStatsHtml = '<p>Teplotní data nebyla nalezena.</p>';
             let timeOutOfRangeHtml = '';
@@ -1810,7 +1917,7 @@
 
             let stateAnalysisHtml = '';
             if (defrostCol) {
-                 const defrostingTime = data.allData.filter(r => String(r[defrostCol]).toLowerCase() === 'true').length * 5;
+                 const defrostingTime = data.allData.filter(r => String(r[defrostCol]).toLowerCase().includes('aktivní')).length * 5;
                  stateAnalysisHtml += `<p><strong>Celkový čas odmrazování:</strong> ${Math.floor(defrostingTime / 60)}h ${defrostingTime % 60}m</p>`;
             }
              if (alarmCol) {
@@ -2003,7 +2110,7 @@
             }
             
             if (action === 'remove') {
-                data.allData = data.allData.filter(row => row[column] !== '' && row[column] !== null && row[column] !== undefined);
+                data.allData = data.allData.filter(row => row[column] !== '' && row[column] !== null || row[column] !== undefined);
             } else {
                 data.allData.forEach(row => {
                     if (row[column] === '' || row[column] === null || row[column] === undefined) {
@@ -2129,6 +2236,327 @@
             const h = (1 - value) * 60; // 0 (red) to 120 (green)
             const l = Math.abs(value) * 40 + 25; // lightness from 25% to 65%
             return `hsl(${h}, 90%, ${l}%)`;
+        }
+
+        // --- Nová funkcionalita: Predikce a anomálie ---
+
+        function populatePredictionSelector() {
+            const data = getCurrentData();
+            if (!data) return;
+            const select = document.getElementById('predictionColumn');
+            const dateCol = data.columns.find(c => c.toLowerCase().includes('datum') || c.toLowerCase().includes('logged'));
+            const numericCols = data.numericColumns.filter(c => c !== dateCol);
+
+            let options = '';
+            if (dateCol) {
+                options = `<optgroup label="Časová řada">`;
+                options += numericCols.map(c => `<option value="${c}">${c}</option>`).join('');
+                options += `</optgroup>`;
+            } else {
+                options = numericCols.map(c => `<option value="${c}">${c}</option>`).join('');
+            }
+            
+            select.innerHTML = options;
+        }
+
+        function runPredictionAndAnomalyDetection() {
+            const data = getCurrentData();
+            if (!data) {
+                showMessage('❌ Nejprve nahrajte data.', 'error');
+                return;
+            }
+
+            const selectedCol = document.getElementById('predictionColumn').value;
+            const dateCol = data.columns.find(c => c.toLowerCase().includes('datum') || c.toLowerCase().includes('logged'));
+            
+            if (!selectedCol || !dateCol) {
+                showMessage('❌ Pro predikci je nutné mít sloupec s datem a číselný sloupec.', 'error');
+                return;
+            }
+            
+            showLoading('Spouštím analýzu dat...');
+            document.getElementById('predictionChartContainer').style.display = 'none';
+
+            setTimeout(() => {
+                const plotData = data.allData
+                    .map(row => ({
+                        x: row.dateObject,
+                        y: parseFloat(String(row[selectedCol]))
+                    }))
+                    .filter(p => p.x && !isNaN(p.y))
+                    .sort((a,b) => a.x - b.x);
+
+                if (plotData.length < 10) {
+                    hideLoading();
+                    showMessage('❌ Pro predikci je potřeba alespoň 10 datových bodů.', 'error');
+                    return;
+                }
+
+                // Jednoduchá lineární regrese pro predikci
+                const regressionData = plotData.map((p, i) => ({ x: i, y: p.y }));
+                const { slope, intercept } = calculateLinearRegression(regressionData);
+
+                const lastIndex = regressionData.length - 1;
+                const lastDate = plotData[lastIndex].x;
+                const predictionPoints = [];
+                const futurePointsCount = Math.floor(plotData.length * 0.2); // Predikce 20% budoucích dat
+                
+                for (let i = 1; i <= futurePointsCount; i++) {
+                    const futureIndex = lastIndex + i;
+                    const futureDate = new Date(lastDate.getTime() + (i * (lastDate.getTime() - plotData[lastIndex - 1].x.getTime())));
+                    const predictedValue = slope * futureIndex + intercept;
+                    predictionPoints.push({ x: futureDate, y: predictedValue });
+                }
+
+                // Z-score pro detekci anomálií
+                const values = plotData.map(p => p.y);
+                const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
+                const stdDev = Math.sqrt(values.map(v => (v - mean) ** 2).reduce((sum, s) => sum + s, 0) / values.length);
+                const anomalies = plotData.filter(p => Math.abs((p.y - mean) / stdDev) > 3);
+
+                renderPredictionChart(plotData, predictionPoints, anomalies, selectedCol);
+                hideLoading();
+                showMessage('✅ Analýza predikce a anomálií dokončena.', 'success');
+            }, 100);
+        }
+
+        function renderPredictionChart(plotData, predictionData, anomalies, selectedCol) {
+            const ctx = document.getElementById('predictionChart').getContext('2d');
+            const chartColors = getChartColors();
+
+            const datasets = [{
+                label: selectedCol,
+                data: plotData,
+                borderColor: getCssVariable('--primary-color'),
+                backgroundColor: getCssVariable('--primary-color') + '20',
+                fill: false,
+                tension: 0.1,
+                pointRadius: 2,
+            }, {
+                label: 'Predikce',
+                data: predictionData,
+                borderColor: getCssVariable('--color-forecast'),
+                borderDash: [5, 5],
+                fill: false,
+                tension: 0.1,
+                pointRadius: 0,
+            }];
+
+            if (anomalies.length > 0) {
+                datasets.push({
+                    label: 'Anomálie',
+                    data: anomalies,
+                    pointBackgroundColor: getCssVariable('--color-anomaly'),
+                    pointRadius: 6,
+                    pointStyle: 'crossRot',
+                    type: 'scatter',
+                    showLine: false,
+                });
+            }
+            
+            const annotations = anomalies.map(a => ({
+                type: 'point',
+                xValue: a.x,
+                yValue: a.y,
+                display: true,
+                backgroundColor: getCssVariable('--color-anomaly'),
+                pointRadius: 6,
+                pointStyle: 'triangle',
+            }));
+
+            if (predictionChartInstance) predictionChartInstance.destroy();
+            
+            document.getElementById('predictionChartContainer').style.display = 'block';
+
+            predictionChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: { datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { type: 'time', ticks: { color: chartColors.textColor }, grid: { color: chartColors.gridColor } },
+                        y: { ticks: { color: chartColors.textColor }, grid: { color: chartColors.gridColor } }
+                    },
+                    plugins: { 
+                        legend: { labels: { color: chartColors.textColor } },
+                        annotation: { annotations }
+                    },
+                }
+            });
+        }
+
+        // --- Nová funkcionalita: Podmíněné zvýraznění dat ---
+        function populateConditionalHighlightingSelectors() {
+            const data = getCurrentData();
+            if (!data) return;
+            const select = document.getElementById('conditionColumn');
+            const numericCols = data.numericColumns;
+            const options = numericCols.map(c => `<option value="${c}">${c}</option>`).join('');
+            select.innerHTML = options;
+        }
+
+        function applyConditionalHighlighting() {
+            const data = getCurrentData();
+            if (!data) {
+                showMessage('❌ Nejprve nahrajte data.', 'error');
+                return;
+            }
+            
+            const column = document.getElementById('conditionColumn').value;
+            const operator = document.getElementById('conditionOperator').value;
+            const valueInput = document.getElementById('conditionValue').value;
+            const value = parseFloat(valueInput);
+
+            if (!column || valueInput === '' || isNaN(value)) {
+                showMessage('❌ Vyberte sloupec a zadejte platnou číselnou hodnotu.', 'error');
+                return;
+            }
+            
+            // 1. Zjistit, které řádky splňují podmínku
+            highlightedRows = data.filteredData.filter(row => {
+                const cellValue = parseFloat(row[column]);
+                if (isNaN(cellValue)) return false;
+
+                switch(operator) {
+                    case '=': return cellValue === value;
+                    case '>': return cellValue > value;
+                    case '<': return cellValue < value;
+                    case '>=': return cellValue >= value;
+                    case '<=': return cellValue <= value;
+                    case '!=': return cellValue !== value;
+                    default: return false;
+                }
+            });
+            
+            // 2. Přepnout na záložku tabulky a aktualizovat zobrazení
+            switchTab('table');
+            // updateTable() se volá automaticky při přepnutí záložky, ale pro jistotu
+            updateTable();
+
+            // 3. Vytvořit dodatečný dataset pro graf na záložce 'Charts'
+            // Tato část se přesune do renderChartNow, ale potřebujeme data
+            const xCol = document.getElementById('xAxis').value;
+            const yCol = document.getElementById('yAxis').value;
+
+            if (!xCol || !yCol) {
+                // If chart is not set up, just highlight table and show a message
+                showMessage(`✅ Zvýrazněno ${highlightedRows.length} řádků v tabulce, které splňují podmínku: ${column} ${operator} ${valueInput}.`, 'success');
+                return;
+            }
+            
+            // Tady musíme graf vygenerovat znovu, aby se promítly změny
+            renderChartWithHighlighting(column, operator, valueInput);
+
+            document.getElementById('conditionalHighlightingMessage').textContent = `✅ Zvýrazněno ${highlightedRows.length} řádků v tabulce a bodech v grafu, které splňují podmínku: ${column} ${operator} ${valueInput}.`;
+            showMessage(`✅ Zvýrazněno ${highlightedRows.length} řádků v tabulce. Přejděte na záložku "Grafy" pro vizualizaci.`, 'success');
+
+        }
+
+        function renderChartWithHighlighting(conditionColumn, conditionOperator, conditionValue) {
+            const data = getCurrentData();
+            if (!data) return;
+
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            const chartType = document.getElementById('chartType').value;
+            const xCol = document.getElementById('xAxis').value;
+            const yCol = document.getElementById('yAxis').value;
+            const showTrendline = document.getElementById('showTrendline').checked;
+            const enableY2 = document.getElementById('enableYAxis2').checked;
+            const yCol2 = document.getElementById('yAxis2').value;
+
+            const chartData = data.filteredData;
+            const dateColName = data.columns.find(c => c.toLowerCase().includes('datum') || c.toLowerCase().includes('logged'));
+            const isTimeSeries = xCol === dateColName;
+
+            // Destroy existing chart instance
+            if (mainChartInstance) mainChartInstance.destroy();
+            
+            // Generate datasets based on the condition
+            let labels, mainDataPoints, highlightDataPoints;
+            
+            // Helper function to check condition
+            const checkCondition = (row) => {
+                const cellValue = parseFloat(row[conditionColumn]);
+                if (isNaN(cellValue)) return false;
+                const value = parseFloat(conditionValue);
+                switch(conditionOperator) {
+                    case '=': return cellValue === value;
+                    case '>': return cellValue > value;
+                    case '<': return cellValue < value;
+                    case '>=': return cellValue >= value;
+                    case '<=': return cellValue <= value;
+                    case '!=': return cellValue !== value;
+                    default: return false;
+                }
+            };
+            
+            labels = chartData.map(r => isTimeSeries ? r.dateObject : r[xCol]);
+            mainDataPoints = chartData.map((r, index) => {
+                return {
+                    x: isTimeSeries ? r.dateObject : r[xCol],
+                    y: parseFloat(String(r[yCol])),
+                    highlight: checkCondition(r)
+                };
+            });
+            
+            const datasets = [{
+                label: yCol,
+                data: mainDataPoints.filter(p => !p.highlight).map(p => ({ x: p.x, y: p.y })),
+                borderColor: getCssVariable('--primary-color'),
+                backgroundColor: getCssVariable('--primary-color') + '20',
+                fill: false,
+                tension: 0.1,
+                pointRadius: 2,
+                type: 'line', // For non-time-series, might need to adjust
+            }, {
+                label: `Zvýrazněno: ${conditionColumn} ${conditionOperator} ${conditionValue}`,
+                data: mainDataPoints.filter(p => p.highlight).map(p => ({ x: p.x, y: p.y })),
+                borderColor: getCssVariable('--danger-color'),
+                backgroundColor: getCssVariable('--danger-color'),
+                fill: false,
+                tension: 0.1,
+                pointRadius: 6,
+                pointStyle: 'rectRot',
+                showLine: false,
+                type: 'scatter',
+            }];
+
+            if (showTrendline) {
+                const trendData = mainDataPoints.map((p, i) => ({
+                    x: isTimeSeries ? p.x.getTime() : i,
+                    y: p.y
+                })).filter(p => p.x != null && !isNaN(p.x) && !isNaN(p.y));
+
+                if (trendData.length > 1) {
+                    const { slope, intercept } = calculateLinearRegression(trendData);
+                    datasets.push({
+                        label: 'Trendová čára',
+                        data: trendData.map(p => ({ x: p.x, y: slope * p.x + intercept })),
+                        type: 'line',
+                        borderColor: getCssVariable('--secondary-text-color'),
+                        fill: false,
+                        pointRadius: 0
+                    });
+                }
+            }
+
+            // Create the new chart
+            mainChartInstance = new Chart(ctx, {
+                type: chartType,
+                data: { labels, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { type: isTimeSeries ? 'time' : 'category', ticks: { color: getChartColors().textColor }, grid: { color: getChartColors().gridColor } },
+                        y: { ticks: { color: getChartColors().textColor }, grid: { color: getChartColors().gridColor } }
+                    },
+                    plugins: {
+                        legend: { labels: { color: getChartColors().textColor } },
+                    }
+                }
+            });
         }
 
 
